@@ -1,0 +1,144 @@
+# ==================================================
+# EduShare - .gitignore
+# Spring Boot + ReactJS
+# ==================================================
+
+
+# =========================
+# IDE
+# =========================
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+
+# Eclipse / STS
+.project
+.classpath
+.settings/
+.springBeans
+.sts4-cache/
+
+
+# =========================
+# OS
+# =========================
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+
+# =========================
+# SPRING BOOT / JAVA
+# =========================
+
+# Maven build
+backend/target/
+
+# Gradle (nếu sau này sử dụng Gradle)
+backend/.gradle/
+backend/build/
+
+# Java compiled files
+*.class
+
+# Logs
+*.log
+logs/
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+
+# =========================
+# SPRING CONFIG / SECRETS
+# =========================
+
+# Local configuration
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-local.yaml
+
+backend/src/main/resources/application-secret.yml
+backend/src/main/resources/application-secret.yaml
+
+backend/src/main/resources/application-secrets.yml
+backend/src/main/resources/application-secrets.yaml
+
+
+# =========================
+# REACT / NODE
+# =========================
+
+# Dependencies
+frontend/node_modules/
+
+# Production build
+frontend/dist/
+frontend/build/
+
+# Vite cache
+frontend/.vite/
+
+# npm
+frontend/npm-debug.log*
+frontend/.npm/
+
+# yarn
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# pnpm
+frontend/pnpm-debug.log*
+
+
+# =========================
+# ENVIRONMENT VARIABLES
+# =========================
+
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+
+# Cho phép commit file mẫu
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+
+# =========================
+# TEST / COVERAGE
+# =========================
+
+frontend/coverage/
+backend/coverage/
+
+*.exec
+
+
+# =========================
+# TEMPORARY FILES
+# =========================
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
