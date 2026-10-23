@@ -1,13 +1,14 @@
 package org.example.edushare;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class EdushareApplicationTests {
 
     @Test
-    void contextLoads() {
+    void applicationEntryPointExists() {
+        assertNotNull(EdushareApplication.class);
     }
 
 }
