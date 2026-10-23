@@ -21,7 +21,9 @@ public enum ErrorCode {
     OTP_EXPIRED(1011, "Verification code has expired", HttpStatus.BAD_REQUEST),
     OTP_ATTEMPTS_EXCEEDED(1012, "Too many invalid verification attempts", HttpStatus.TOO_MANY_REQUESTS),
     EMAIL_ALREADY_VERIFIED(1013, "Email is already verified", HttpStatus.CONFLICT),
-    OTP_RESEND_TOO_SOON(1014, "Please wait before requesting another verification code", HttpStatus.TOO_MANY_REQUESTS);
+    OTP_RESEND_TOO_SOON(1014, "Please wait before requesting another verification code", HttpStatus.TOO_MANY_REQUESTS),
+    EMAIL_NOT_VERIFIED(1015, "Email has not been verified", HttpStatus.FORBIDDEN),
+    ACCOUNT_DISABLED(1016, "Account is inactive or banned", HttpStatus.FORBIDDEN);
     private int code;
     private String message;
     private HttpStatusCode statusCode;

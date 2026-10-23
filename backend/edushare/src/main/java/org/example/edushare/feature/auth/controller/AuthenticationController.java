@@ -5,9 +5,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.edushare.common.response.ApiResponse;
+import org.example.edushare.feature.auth.dto.request.LoginRequest;
 import org.example.edushare.feature.auth.dto.request.RegisterRequest;
 import org.example.edushare.feature.auth.dto.request.ResendOtpRequest;
 import org.example.edushare.feature.auth.dto.request.VerifyEmailRequest;
+import org.example.edushare.feature.auth.dto.response.LoginResponse;
 import org.example.edushare.feature.auth.dto.response.RegisterResponse;
 import org.example.edushare.feature.auth.service.AuthenticationService;
 import org.example.edushare.feature.auth.service.EmailVerificationService;
@@ -27,6 +29,13 @@ public class AuthenticationController {
 
     AuthenticationService authenticationService;
     EmailVerificationService emailVerificationService;
+
+
+    @PostMapping("/token")
+    ApiResponse<LoginResponse> authenticate(@Valid @RequestBody LoginRequest request) {
+        var result = authenticationService.authenticate(request);
+        return ApiResponse.<LoginResponse>builder().result(result).build();
+    }
 
     @PostMapping("/register")
     public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {

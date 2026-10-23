@@ -11,7 +11,11 @@ import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.example.edushare.common.exception.AppException;
 import org.example.edushare.common.exception.ErrorCode;
+import org.example.edushare.feature.auth.dto.request.IntrospectRequest;
+import org.example.edushare.feature.auth.dto.request.LoginRequest;
 import org.example.edushare.feature.auth.dto.request.RegisterRequest;
+import org.example.edushare.feature.auth.dto.response.IntrospectResponse;
+import org.example.edushare.feature.auth.dto.response.LoginResponse;
 import org.example.edushare.feature.auth.dto.response.RegisterResponse;
 import org.example.edushare.feature.auth.entity.Role;
 import org.example.edushare.feature.auth.repository.RoleRepository;
@@ -19,11 +23,11 @@ import org.example.edushare.feature.user.dto.request.UserCreationRequest;
 import org.example.edushare.feature.user.dto.response.UserResponse;
 import org.example.edushare.feature.user.entity.User;
 import org.example.edushare.feature.user.entity.Profile;
+import org.example.edushare.feature.user.entity.UserStatus;
 import org.example.edushare.feature.user.mapper.UserMapper;
 import org.example.edushare.feature.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,13 +51,13 @@ public class AuthenticationService {
 //    InvalidatedTokenRepository invalidatedTokenRepository;
 
 //    JWT configuration is temporarily disabled while testing registration only.
-//    @NonFinal
-//    @Value("${jwt.signerKey}")
-//    protected String SIGNER_KEY;
+    @NonFinal
+    @Value("${jwt.signerKey}")
+    protected String SIGNER_KEY;
 //
-//    @NonFinal
-//    @Value("${jwt.valid-duration}")
-//    protected Long VALID_DURATION;
+    @NonFinal
+    @Value("${jwt.valid-duration}")
+    protected Long VALID_DURATION;
 //
 //    @NonFinal
 //    @Value("${jwt.refreshable-duration}")
@@ -93,32 +97,43 @@ public class AuthenticationService {
 
 
 
-//    public IntrospectResponse introspect(IntrospectRequest request) throws ParseException, JOSEException {
-//        var token = request.getToken();
-//        boolean isValid = true;
-//        try {
-//            verifyToken(token, false);
-//        } catch (AppException e) {
-//            isValid = false;
-//        }
-//        return IntrospectResponse.builder().valid(isValid).build();
-//    }
+    public IntrospectResponse introspect(IntrospectRequest request) throws ParseException, JOSEException {
+        var token = request.getToken();
+        boolean isValid = true;
+        try {
+            verifyToken(token);
+        } catch (AppException e) {
+            isValid = false;
+        }
+        return IntrospectResponse.builder().valid(isValid).build();
+    }
 
-//    public AuthenticationResponse authenticate(AuthenticationRequest request) {
-//        var user = userRepository
-//                .findByUsername(request.getUsername())
-//                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-//        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-//        boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
-//        if (!authenticated) {
-//            throw new AppException(ErrorCode.UNAUTHENTICATED);
-//        }
-//        var token = generateToken(user);
-//        return AuthenticationResponse.builder()
-//                .token(token)
-//                .authenticated(authenticated)
-//                .build();
-//    }
+    @Transactional(readOnly = true)
+    public LoginResponse authenticate(LoginRequest request) {
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        var user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
+        if (!authenticated) {
+            log.info("Authentication failed for user: {}", email);
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+
+        var token = generateToken(user);
+        return LoginResponse.builder()
+                .token(token)
+                .authenticated(authenticated)
+                .build();
+    }
 
 //    public void logout(LogoutRequest request) throws ParseException, JOSEException {
 //
@@ -152,23 +167,15 @@ public class AuthenticationService {
 //        return AuthenticationResponse.builder().token(token).authenticated(true).build();
 //    }
 
-/*  JWT helpers are temporarily disabled while testing registration only.
-    private SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
+//  JWT helpers are temporarily disabled while testing registration only.
+    private SignedJWT verifyToken(String token) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
 
         SignedJWT signedJWT = SignedJWT.parse(token);
 
-        Date expirationTime = (isRefresh)
-                ? new Date(signedJWT
-                .getJWTClaimsSet()
-                .getIssueTime()
-                .toInstant()
-                .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)
-                .toEpochMilli())
-                : signedJWT.getJWTClaimsSet().getExpirationTime();
+        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
         var verify = signedJWT.verify(verifier);
-
         if (!(verify && expirationTime.after(new Date()))) throw new AppException(ErrorCode.UNAUTHENTICATED);
 
 //        if (invalidatedTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
@@ -181,7 +188,7 @@ public class AuthenticationService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(user.getEmail())
-                .issuer("devteria.com")
+                .issuer("huynn")
                 .issueTime(new Date())
                 .jwtID(UUID.randomUUID().toString())
                 .expirationTime(new Date(
@@ -214,5 +221,4 @@ public class AuthenticationService {
         }
         return stringJoiner.toString();
     }
-*/
 }
