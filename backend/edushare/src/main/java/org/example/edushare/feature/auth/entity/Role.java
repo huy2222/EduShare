@@ -4,10 +4,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.Column;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.util.Set;
+import java.util.HashSet;
 
 @Builder
 @Entity
@@ -21,10 +23,13 @@ public class Role {
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
     String id;
 
+    @Column(nullable = false, unique = true, length = 100)
     String name;
 
+    @Column(length = 500)
     String description;
 
     @ManyToMany
-    Set<Permission> permissions;
+    @Builder.Default
+    Set<Permission> permissions = new HashSet<>();
 }

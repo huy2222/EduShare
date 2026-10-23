@@ -28,6 +28,8 @@ jwt:
   signerKey: ${JWT_SECRET_KEY:edushare-development-jwt-secret-change-in-production-minimum-64-bytes}
   valid-duration: 3600 # in seconds
 app:
+  security:
+    admin-email: ${APP_ADMIN_EMAIL:}
   otp:
     expiration-minutes: 5
     max-attempts: 5

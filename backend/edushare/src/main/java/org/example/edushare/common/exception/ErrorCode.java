@@ -23,7 +23,11 @@ public enum ErrorCode {
     EMAIL_ALREADY_VERIFIED(1013, "Email is already verified", HttpStatus.CONFLICT),
     OTP_RESEND_TOO_SOON(1014, "Please wait before requesting another verification code", HttpStatus.TOO_MANY_REQUESTS),
     EMAIL_NOT_VERIFIED(1015, "Email has not been verified", HttpStatus.FORBIDDEN),
-    ACCOUNT_DISABLED(1016, "Account is inactive or banned", HttpStatus.FORBIDDEN);
+    ACCOUNT_DISABLED(1016, "Account is inactive or banned", HttpStatus.FORBIDDEN),
+    PERMISSION_NOT_FOUND(1017, "Permission not found", HttpStatus.NOT_FOUND),
+    PERMISSION_EXISTED(1018, "Permission already exists", HttpStatus.CONFLICT),
+    ROLE_NOT_FOUND(1019, "Role not found", HttpStatus.NOT_FOUND),
+    ROLE_EXISTED(1020, "Role already exists", HttpStatus.CONFLICT);
     private int code;
     private String message;
     private HttpStatusCode statusCode;
