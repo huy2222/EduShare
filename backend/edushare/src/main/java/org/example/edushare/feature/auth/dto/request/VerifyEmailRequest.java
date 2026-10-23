@@ -20,6 +20,6 @@ public class VerifyEmailRequest {
     private String email;
 
     @NotBlank(message = "OTP is required")
-    @Pattern(regexp = "\\d{6}", message = "OTP must contain exactly 6 digits")
+    @Pattern(regexp = "\\d+", message = "OTP must contain only digits")
     private String otp;
 }

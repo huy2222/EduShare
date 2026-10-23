@@ -28,6 +28,13 @@ public class AuthorizationDataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        roleRepository.findByName("USER")
+                .orElseGet(() -> roleRepository.save(Role.builder()
+                        .name("USER")
+                        .description("Default role for registered users")
+                        .permissions(new HashSet<>())
+                        .build()));
+
         Role adminRole = roleRepository.findByName("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
                         .name("ADMIN")

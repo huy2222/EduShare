@@ -4,8 +4,8 @@ import com.nimbusds.jose.JOSEException;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
-import org.example.edushare.feature.auth.dto.request.IntrospectRequest;
-import org.example.edushare.feature.auth.service.AuthenticationService;
+import org.example.edushare.common.exception.AppException;
+import org.example.edushare.feature.auth.service.JwtService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -28,7 +28,7 @@ public class CustomJwtDecoder implements JwtDecoder {
     @Value("${jwt.signerKey}")
     private String signerKey;
 
-    AuthenticationService authenticationService;
+    JwtService jwtService;
 
     @NonFinal
     private NimbusJwtDecoder nimbusJwtDecoder = null;
@@ -37,11 +37,8 @@ public class CustomJwtDecoder implements JwtDecoder {
     public Jwt decode(String token) throws JwtException {
 
         try {
-            var response = authenticationService.introspect(
-                    IntrospectRequest.builder().token(token).build());
-
-            if (!response.isValid()) throw new JwtException("Token invalid");
-        } catch (JOSEException | ParseException e) {
+            jwtService.verifyToken(token);
+        } catch (JOSEException | ParseException | AppException e) {
             throw new JwtException(e.getMessage());
         }
 

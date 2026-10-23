@@ -24,7 +24,10 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
         "/auth/register", "/auth/verify-email", "/auth/resend-otp", "/auth/token",
-        "/auth/introspect", "/auth/logout", "/auth/refresh"
+        "/auth/introspect", "/auth/logout", "/auth/refresh", "/auth/google", "/auth/google/link",
+        "/api/v1/auth/register", "/api/v1/auth/verify-email", "/api/v1/auth/resend-otp",
+        "/api/v1/auth/token", "/api/v1/auth/introspect", "/api/v1/auth/logout",
+        "/api/v1/auth/refresh", "/api/v1/auth/google", "/api/v1/auth/google/link"
     };
     private final CustomJwtDecoder customJwtDecoder;
 
@@ -50,6 +53,7 @@ public class SecurityConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
         corsConfiguration.addAllowedOrigin("http://localhost:3000");
+        corsConfiguration.addAllowedOrigin("http://localhost:5173");
         corsConfiguration.addAllowedHeader("*");
         corsConfiguration.addAllowedMethod("*");
         UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();

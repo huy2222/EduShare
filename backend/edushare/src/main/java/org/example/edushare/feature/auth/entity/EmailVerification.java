@@ -26,6 +26,11 @@ public class EmailVerification {
     @Column(nullable = false)
     private String otpHash;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private VerificationType type = VerificationType.REGISTER;
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
@@ -35,15 +40,31 @@ public class EmailVerification {
 
     @Column(nullable = false)
     @Builder.Default
-    private boolean used = false;
+    private int resendCount = 0;
 
     @Column(nullable = false)
+    private LocalDateTime lastSentAt;
+
+    private LocalDateTime verifiedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private VerificationStatus status = VerificationStatus.PENDING;
+
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (type == null) {
+            type = VerificationType.REGISTER;
+        }
+        if (status == null) {
+            status = VerificationStatus.PENDING;
         }
     }
 }
