@@ -27,9 +27,19 @@ spring:
 jwt:
   signerKey: ${JWT_SECRET_KEY:edushare-development-jwt-secret-change-in-production-minimum-64-bytes}
   valid-duration: 3600 # in seconds
+  issuer: ${JWT_ISSUER:edushare}
 app:
   security:
     admin-email: ${APP_ADMIN_EMAIL:}
+    cookie:
+      name: ${AUTH_COOKIE_NAME:access_token}
+      secure: ${AUTH_COOKIE_SECURE:true}
+      same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+      path: ${AUTH_COOKIE_PATH:/}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    token-revocation:
+      cleanup-cron: ${TOKEN_REVOCATION_CLEANUP_CRON:0 0 3 * * *}
   google:
     client-id: "310105857746-nkgfue9o4ps91tu0tmirlt47mibp5ik2.apps.googleusercontent.com"
     link-token-secret: ${GOOGLE_LINK_TOKEN_SECRET:edushare-development-google-link-secret-change-in-production-minimum-64-bytes}

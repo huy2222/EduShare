@@ -39,7 +39,7 @@ describe('LoginPage Google authentication', () => {
     vi.clearAllMocks()
   })
 
-  it('stores the EduShare JWT after a Google login', async () => {
+  it('does not expose or store the EduShare JWT after a Google login', async () => {
     const onAuthenticated = vi.fn()
     loginWithGoogle.mockResolvedValue({
       code: 1000,
@@ -49,8 +49,9 @@ describe('LoginPage Google authentication', () => {
     render(<LoginPage onAuthenticated={onAuthenticated} />)
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
-    await waitFor(() => expect(localStorage.getItem('edushare.accessToken')).toBe('edushare-jwt'))
-    expect(onAuthenticated).toHaveBeenCalledOnce()
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce())
+    expect(localStorage.getItem('edushare.accessToken')).toBeNull()
+    expect(sessionStorage.getItem('edushare.accessToken')).toBeNull()
   })
 
   it('opens the link modal and links without requesting another Google login', async () => {
@@ -76,7 +77,8 @@ describe('LoginPage Google authentication', () => {
     await waitFor(() => expect(linkGoogleAccount)
       .toHaveBeenCalledWith('short-lived-link-token', 'Password123'))
     expect(loginWithGoogle).toHaveBeenCalledTimes(1)
-    expect(localStorage.getItem('edushare.accessToken')).toBe('linked-jwt')
+    expect(localStorage.getItem('edushare.accessToken')).toBeNull()
+    expect(sessionStorage.getItem('edushare.accessToken')).toBeNull()
   })
 
   it('shows the explicit invalid-password message', async () => {
@@ -96,7 +98,7 @@ describe('LoginPage Google authentication', () => {
     expect(await screen.findByText('Mật khẩu không chính xác.')).toBeInTheDocument()
   })
 
-  it('logs in with email and keeps the JWT only for the browser session by default', async () => {
+  it('logs in with email without writing the JWT to browser storage', async () => {
     const onAuthenticated = vi.fn()
     login.mockResolvedValue({
       code: 1000,
@@ -114,7 +116,7 @@ describe('LoginPage Google authentication', () => {
 
     await waitFor(() => expect(login)
       .toHaveBeenCalledWith('student@university.edu.vn', 'Password123'))
-    expect(sessionStorage.getItem('edushare.accessToken')).toBe('password-jwt')
+    expect(sessionStorage.getItem('edushare.accessToken')).toBeNull()
     expect(localStorage.getItem('edushare.accessToken')).toBeNull()
     expect(onAuthenticated).toHaveBeenCalledOnce()
   })
@@ -156,11 +158,12 @@ describe('LoginPage Google authentication', () => {
     await waitFor(() => expect(verifyEmail)
       .toHaveBeenCalledWith('student@university.edu.vn', '123456'))
     expect(login).toHaveBeenCalledWith('student@university.edu.vn', 'Password123')
-    expect(localStorage.getItem('edushare.accessToken')).toBe('registered-user-jwt')
+    expect(localStorage.getItem('edushare.accessToken')).toBeNull()
+    expect(sessionStorage.getItem('edushare.accessToken')).toBeNull()
     expect(onAuthenticated).toHaveBeenCalledOnce()
   })
 
-  it('registers with Google and stores the returned JWT', async () => {
+  it('registers with Google without storing the returned JWT', async () => {
     const onAuthenticated = vi.fn()
     loginWithGoogle.mockResolvedValue({
       code: 1000,
@@ -171,7 +174,8 @@ describe('LoginPage Google authentication', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
     await waitFor(() => expect(loginWithGoogle).toHaveBeenCalledWith('google-id-token'))
-    expect(localStorage.getItem('edushare.accessToken')).toBe('google-register-jwt')
+    expect(localStorage.getItem('edushare.accessToken')).toBeNull()
+    expect(sessionStorage.getItem('edushare.accessToken')).toBeNull()
     expect(onAuthenticated).toHaveBeenCalledOnce()
   })
 })

@@ -19,9 +19,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +35,27 @@ public class UserService {
     UserMapper userMapper;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
+
+    @Transactional(readOnly = true)
+    public UserResponse getMyInfo() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        Set<String> roles = user.getRoles() == null
+                ? Set.of()
+                : user.getRoles().stream().map(Role::getName).collect(Collectors.toUnmodifiableSet());
+        return UserResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getProfile() == null ? null : user.getProfile().getFullName())
+                .status(user.getStatus())
+                .createdAt(user.getCreatedAt())
+                .roles(roles)
+                .build();
+    }
 
 //    public UserResponse createUser(UserCreationRequest request) {
 //        log.info("User service create");

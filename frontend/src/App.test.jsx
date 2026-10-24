@@ -49,7 +49,7 @@ describe('App authentication navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }))
 
     await screen.findByRole('heading', { name: /Kho tài liệu học tập/i })
-    expect(sessionStorage.getItem('edushare.accessToken')).toBe('session-jwt')
+    expect(sessionStorage.getItem('edushare.accessToken')).toBeNull()
     expect(screen.getByText('Tài khoản')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }))

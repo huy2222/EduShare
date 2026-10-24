@@ -1,6 +1,7 @@
 package org.example.edushare.feature.auth.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,6 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AuthenticationResponse {
+    @JsonIgnore
     private String token;
     private boolean authenticated;
     private boolean accountLinkRequired;

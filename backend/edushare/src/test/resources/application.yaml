@@ -9,14 +9,23 @@ spring:
       ddl-auto: create-drop
     show-sql: false
 
-application:
-  security:
-    jwt:
-      issuer: https://edushare.local
-      secret: edushare-test-jwt-secret-at-least-thirty-two-bytes
-      access-token-expiration: 1h
+jwt:
+  signerKey: edushare-test-jwt-secret-that-is-at-least-sixty-four-bytes-long!
+  valid-duration: 3600
+  issuer: edushare-test
 
 app:
+  security:
+    cookie:
+      name: access_token
+      secure: false
+      same-site: Lax
+      path: /
+    cors:
+      allowed-origins:
+        - http://localhost:5173
+    token-revocation:
+      cleanup-cron: "0 0 3 * * *"
   google:
     client-id: google-test-client-id.apps.googleusercontent.com
     link-token-secret: edushare-test-google-link-secret-that-is-at-least-sixty-four-bytes-long

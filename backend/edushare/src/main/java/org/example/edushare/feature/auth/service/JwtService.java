@@ -17,8 +17,10 @@ import org.example.edushare.feature.user.entity.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
-import java.text.ParseException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -30,19 +32,22 @@ import java.util.UUID;
 public class JwtService {
     private final String signerKey;
     private final long validDuration;
+    private final String issuer;
 
     public JwtService(
             @Value("${jwt.signerKey}") String signerKey,
-            @Value("${jwt.valid-duration}") long validDuration) {
+            @Value("${jwt.valid-duration}") long validDuration,
+            @Value("${jwt.issuer:huynn}") String issuer) {
         this.signerKey = signerKey;
         this.validDuration = validDuration;
+        this.issuer = issuer;
     }
 
     public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(user.getEmail())
-                .issuer("huynn")
+                .issuer(issuer)
                 .issueTime(new Date())
                 .jwtID(UUID.randomUUID().toString())
                 .expirationTime(Date.from(Instant.now().plus(validDuration, ChronoUnit.SECONDS)))
@@ -52,7 +57,7 @@ public class JwtService {
 
         JWSObject token = new JWSObject(header, new Payload(claims.toJSONObject()));
         try {
-            token.sign(new MACSigner(signerKey.getBytes()));
+            token.sign(new MACSigner(signerKey.getBytes(StandardCharsets.UTF_8)));
             return token.serialize();
         } catch (JOSEException exception) {
             log.error("Error while signing an EduShare access token", exception);
@@ -60,13 +65,43 @@ public class JwtService {
         }
     }
 
-    public void verifyToken(String rawToken) throws JOSEException, ParseException {
-        JWSVerifier verifier = new MACVerifier(signerKey.getBytes());
-        SignedJWT token = SignedJWT.parse(rawToken);
-        Date expirationTime = token.getJWTClaimsSet().getExpirationTime();
-        if (!token.verify(verifier)
-                || expirationTime == null
-                || !expirationTime.after(new Date())) {
+    public void verifyToken(String rawToken) {
+        verify(rawToken, true);
+    }
+
+    public VerifiedToken verifyAndRead(String rawToken) {
+        return verify(rawToken, true);
+    }
+
+    public VerifiedToken verifyForRevocation(String rawToken) {
+        return verify(rawToken, false);
+    }
+
+    public Duration remainingValidity(String rawToken) {
+        VerifiedToken token = verifyAndRead(rawToken);
+        long remainingSeconds = Math.max(0, token.expiresAt().getEpochSecond() - Instant.now().getEpochSecond());
+        return Duration.ofSeconds(remainingSeconds);
+    }
+
+    private VerifiedToken verify(String rawToken, boolean rejectExpired) {
+        try {
+            SignedJWT token = SignedJWT.parse(rawToken);
+            JWSVerifier verifier = new MACVerifier(signerKey.getBytes(StandardCharsets.UTF_8));
+            JWTClaimsSet claims = token.getJWTClaimsSet();
+            Date expirationTime = claims.getExpirationTime();
+            String tokenId = claims.getJWTID();
+
+            boolean invalid = !JWSAlgorithm.HS512.equals(token.getHeader().getAlgorithm())
+                    || !token.verify(verifier)
+                    || !issuer.equals(claims.getIssuer())
+                    || expirationTime == null
+                    || !StringUtils.hasText(tokenId)
+                    || (rejectExpired && !expirationTime.after(new Date()));
+            if (invalid) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+            return new VerifiedToken(tokenId, expirationTime.toInstant());
+        } catch (JOSEException | java.text.ParseException | IllegalArgumentException exception) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
     }
@@ -82,5 +117,8 @@ public class JwtService {
             });
         }
         return scopes.toString();
+    }
+
+    public record VerifiedToken(String id, Instant expiresAt) {
     }
 }

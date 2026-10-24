@@ -13,7 +13,6 @@ import {
   login,
   loginWithGoogle,
   resendVerificationCode,
-  saveAccessToken,
   verifyEmail,
 } from '../services/authApi'
 
@@ -24,14 +23,12 @@ export default function LoginPage({ onAuthenticated }) {
   const [authenticated, setAuthenticated] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [needsVerification, setNeedsVerification] = useState(false)
   const [verificationMessage, setVerificationMessage] = useState('')
 
-  const completeLogin = (token, persist = true) => {
-    saveAccessToken(token, persist)
+  const completeLogin = () => {
     setGoogleError('')
     setFormError('')
     setLinkToken(null)
@@ -50,7 +47,7 @@ export default function LoginPage({ onAuthenticated }) {
     setSubmitting(true)
     try {
       const response = await login(email.trim(), password)
-      completeLogin(response.result.token, remember)
+      if (response.result?.authenticated) completeLogin()
     } catch (error) {
       if (error.code === 1015) {
         setNeedsVerification(true)
@@ -72,7 +69,7 @@ export default function LoginPage({ onAuthenticated }) {
     try {
       await verifyEmail(email.trim(), verificationCode)
       const response = await login(email.trim(), password)
-      completeLogin(response.result.token, remember)
+      if (response.result?.authenticated) completeLogin()
       setNeedsVerification(false)
     } catch (error) {
       setFormError(error.message || 'Không thể xác thực email. Vui lòng thử lại.')
@@ -102,7 +99,7 @@ export default function LoginPage({ onAuthenticated }) {
     try {
       const response = await loginWithGoogle(credential)
       if (response.result?.authenticated) {
-        completeLogin(response.result.token, true)
+        completeLogin()
         return
       }
       if (response.code === 1023 || response.result?.accountLinkRequired) {
@@ -187,16 +184,6 @@ export default function LoginPage({ onAuthenticated }) {
             }
           />
 
-          <label className="remember-option">
-            <input
-              type="checkbox"
-              name="remember"
-              checked={remember}
-              onChange={(event) => setRemember(event.target.checked)}
-            />
-            <span>Ghi nhớ đăng nhập</span>
-          </label>
-
           <div className="login-form__submit-wrap">
             <button className="primary-button" type="submit" disabled={submitting}>
               <span>{submitting ? 'Đang đăng nhập…' : 'Đăng nhập'}</span>
@@ -231,7 +218,7 @@ export default function LoginPage({ onAuthenticated }) {
         <AccountLinkModal
           linkToken={linkToken}
           onCancel={() => setLinkToken(null)}
-          onLinked={(token) => completeLogin(token, true)}
+          onLinked={completeLogin}
         />
       )}
     </main>

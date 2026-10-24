@@ -5,6 +5,7 @@ import lombok.experimental.FieldDefaults;
 import org.example.edushare.feature.user.entity.UserStatus;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 @Getter
 @Setter
 @Builder
@@ -17,5 +18,6 @@ public class UserResponse {
     String email;
     UserStatus status;
     LocalDateTime createdAt;
+    Set<String> roles;
 }
 

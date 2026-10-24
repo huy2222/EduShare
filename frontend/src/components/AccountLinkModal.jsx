@@ -11,8 +11,8 @@ export default function AccountLinkModal({ linkToken, onCancel, onLinked }) {
     setError('')
     setSubmitting(true)
     try {
-      const response = await linkGoogleAccount(linkToken, password)
-      onLinked(response.result.token)
+      await linkGoogleAccount(linkToken, password)
+      onLinked()
     } catch (requestError) {
       setError(
         requestError.code === 1031

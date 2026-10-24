@@ -16,7 +16,6 @@ import {
   loginWithGoogle,
   register,
   resendVerificationCode,
-  saveAccessToken,
   verifyEmail,
 } from '../services/authApi'
 
@@ -87,8 +86,8 @@ export default function RegisterPage({ onAuthenticated }) {
     setSubmitting(true)
     try {
       await verifyEmail(email.trim(), verificationCode)
-      const response = await login(email.trim(), password)
-      completeGoogleRegistration(response.result.token)
+      await login(email.trim(), password)
+      completeGoogleRegistration()
     } catch (requestError) {
       setError(requestError.message || 'Không thể xác thực email. Vui lòng thử lại.')
     } finally {
@@ -112,8 +111,7 @@ export default function RegisterPage({ onAuthenticated }) {
     }
   }
 
-  const completeGoogleRegistration = (token) => {
-    saveAccessToken(token, true)
+  const completeGoogleRegistration = () => {
     setGoogleAuthenticated(true)
     setGoogleError('')
     setLinkToken(null)
@@ -130,7 +128,7 @@ export default function RegisterPage({ onAuthenticated }) {
     try {
       const response = await loginWithGoogle(credential)
       if (response.result?.authenticated) {
-        completeGoogleRegistration(response.result.token)
+        completeGoogleRegistration()
         return
       }
       if (response.code === 1023 || response.result?.accountLinkRequired) {

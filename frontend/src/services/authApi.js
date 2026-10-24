@@ -9,26 +9,62 @@ export class ApiError extends Error {
   }
 }
 
-async function post(path, body) {
-  let response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error(`Không thể gọi API ${API_BASE_URL}${path}`, error)
-    }
-    throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', undefined, 0)
-  }
+let csrf = null
 
+async function parseResponse(response) {
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
     throw new ApiError(payload.message || 'Yêu cầu không thành công.', payload.code, response.status)
   }
   return payload
+}
+
+async function getCsrfToken() {
+  if (csrf) return csrf
+
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/csrf`, { credentials: 'include' })
+  } catch (error) {
+    throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', undefined, 0)
+  }
+  const payload = await parseResponse(response)
+  csrf = {
+    token: payload.result.token,
+    headerName: payload.result.headerName,
+  }
+  return csrf
+}
+
+async function post(path, body) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const csrfToken = await getCsrfToken()
+    let response
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          [csrfToken.headerName]: csrfToken.token,
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      })
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error(`Không thể gọi API ${API_BASE_URL}${path}`, error)
+      }
+      throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', undefined, 0)
+    }
+
+    if (response.status === 403 && attempt === 0) {
+      csrf = null
+      continue
+    }
+    return parseResponse(response)
+  }
+
+  throw new ApiError('Yêu cầu không thành công.', undefined, 403)
 }
 
 export function login(email, password) {
@@ -55,19 +91,20 @@ export function linkGoogleAccount(linkToken, password) {
   return post('/auth/google/link', { linkToken, password })
 }
 
-export function saveAccessToken(token, remember = true) {
-  const selectedStorage = remember ? localStorage : sessionStorage
-  const otherStorage = remember ? sessionStorage : localStorage
-  otherStorage.removeItem('edushare.accessToken')
-  selectedStorage.setItem('edushare.accessToken', token)
+export async function getCurrentUser() {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/users/me`, { credentials: 'include' })
+  } catch (error) {
+    throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', undefined, 0)
+  }
+  return parseResponse(response)
 }
 
-export function getAccessToken() {
-  return localStorage.getItem('edushare.accessToken')
-    || sessionStorage.getItem('edushare.accessToken')
-}
-
-export function clearAccessToken() {
-  localStorage.removeItem('edushare.accessToken')
-  sessionStorage.removeItem('edushare.accessToken')
+export async function logout() {
+  try {
+    return await post('/auth/logout')
+  } finally {
+    csrf = null
+  }
 }
