@@ -80,7 +80,8 @@ function Icon({ name, size = 18, className = '' }) {
     download: <><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></>,
     eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></>,
     user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
-    logout: <><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" /></>,
+    bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
+    down: <path d="m7 10 5 5 5-5" />,
   }
 
   return (
@@ -101,7 +102,14 @@ function Icon({ name, size = 18, className = '' }) {
   )
 }
 
-function HomeHeader({ authenticated, onLogout }) {
+export function HomeHeader({
+  activePage = 'home',
+  authenticated,
+  onLogout,
+  searchInput,
+  onSearchChange,
+  onSearchSubmit,
+}) {
   return (
     <header className="home-header">
       <div className="home-header__inner">
@@ -112,22 +120,53 @@ function HomeHeader({ authenticated, onLogout }) {
           <span>EduShare</span>
         </a>
 
-        <nav className="home-nav" aria-label="Điều hướng tài khoản">
-          {authenticated ? (
-            <>
-              <span className="home-nav__account"><Icon name="user" size={18} />Tài khoản</span>
-              <button className="home-nav__logout" type="button" onClick={onLogout}>
-                <Icon name="logout" size={18} />
-                Đăng xuất
-              </button>
-            </>
-          ) : (
-            <>
-              <a className="home-nav__login" href="#login">Đăng nhập</a>
-              <a className="home-nav__register" href="#register">Đăng ký</a>
-            </>
-          )}
+        <nav className="home-nav" aria-label="Điều hướng chính">
+          <a className={`home-nav__link${activePage === 'home' ? ' home-nav__link--active' : ''}`} href="#home">Trang chủ</a>
+          <a className="home-nav__link" href="#popular-courses">Khám phá tài liệu</a>
+          <a className="home-nav__link" href="#popular-courses">Môn học</a>
+          <a className={`home-nav__link${activePage === 'upload' ? ' home-nav__link--active' : ''}`} href="#upload">Tải lên</a>
         </nav>
+
+        <div className="home-header__actions">
+          <form className="home-header__search" role="search" onSubmit={onSearchSubmit}>
+            <label>
+              <span className="sr-only">Tìm kiếm tài liệu hoặc môn học</span>
+              <Icon name="search" size={17} />
+              <input
+                aria-label="Tìm kiếm tài liệu hoặc môn học"
+                onChange={onSearchChange}
+                placeholder="Tìm kiếm tài liệu, môn học..."
+                type="search"
+                value={searchInput}
+              />
+            </label>
+          </form>
+
+          <a className="home-notification" href="#notifications" aria-label="Thông báo">
+            <Icon name="bell" size={19} />
+            <span aria-hidden="true" />
+          </a>
+
+          {authenticated ? (
+            <div className="home-profile-menu">
+              <a className="home-profile" href="#profile" aria-label="Mở hồ sơ cá nhân">
+                <span className="home-profile__name">Student</span>
+                <span className="home-profile__avatar" aria-hidden="true"><Icon name="user" size={16} /></span>
+                <Icon className="home-profile__chevron" name="down" size={14} />
+                <span className="sr-only">Tài khoản</span>
+              </a>
+              <div className="home-profile-menu__popover">
+                <a href="#profile"><Icon name="user" size={16} /> Hồ sơ cá nhân</a>
+                <button aria-label="Đăng xuất" onClick={onLogout} type="button">Đăng xuất</button>
+              </div>
+            </div>
+          ) : (
+            <div className="home-auth-actions">
+              <a className="home-auth-actions__login" href="#login">Đăng nhập</a>
+              <a className="home-auth-actions__register" href="#register">Đăng ký</a>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )
@@ -218,7 +257,13 @@ export default function HomePage({ authenticated = false, onLogout = () => {} })
 
   return (
     <div className="home-page">
-      <HomeHeader authenticated={authenticated} onLogout={onLogout} />
+      <HomeHeader
+        authenticated={authenticated}
+        onLogout={onLogout}
+        onSearchChange={(event) => setSearchInput(event.target.value)}
+        onSearchSubmit={handleSubmit}
+        searchInput={searchInput}
+      />
       <main>
       <section className="home-hero" aria-labelledby="home-title">
         <div className="home-hero__content">
