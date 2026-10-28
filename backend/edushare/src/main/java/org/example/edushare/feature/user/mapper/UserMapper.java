@@ -2,12 +2,9 @@ package org.example.edushare.feature.user.mapper;
 
 import org.example.edushare.feature.auth.dto.request.RegisterRequest;
 import org.example.edushare.feature.auth.dto.response.RegisterResponse;
-import org.example.edushare.feature.user.dto.request.UserCreationRequest;
-import org.example.edushare.feature.user.dto.response.UserResponse;
 import org.example.edushare.feature.user.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
 
 import java.util.List;
 

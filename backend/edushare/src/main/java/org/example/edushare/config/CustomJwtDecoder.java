@@ -9,6 +9,7 @@ import org.example.edushare.feature.auth.service.TokenRevocationService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -40,10 +41,10 @@ public class CustomJwtDecoder implements JwtDecoder {
         try {
             JwtService.VerifiedToken verifiedToken = jwtService.verifyAndRead(token);
             if (tokenRevocationService.isTokenRevoked(verifiedToken.id())) {
-                throw new JwtException("Access token has been revoked");
+                throw new BadJwtException("Access token has been revoked");
             }
         } catch (AppException e) {
-            throw new JwtException("Invalid access token", e);
+            throw new BadJwtException("Invalid access token", e);
         }
 
         if (Objects.isNull(nimbusJwtDecoder)) {
