@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import UploadPage from './pages/UploadPage'
+import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordRecoveryPages'
+import { EditProfilePage, ProfilePage } from './pages/ProfilePages'
+import { DownloadHistoryPage, NotificationsPage } from './pages/WorkspacePages'
+import { AccountSettingsPage, FavoriteDocumentsPage } from './pages/SettingsFavoritesPages'
 import { getCurrentUser, logout } from './services/authApi'
 
 export default function App() {
@@ -41,6 +46,15 @@ export default function App() {
 
   if (route === '#login') return <LoginPage onAuthenticated={handleAuthenticated} />
   if (route === '#register') return <RegisterPage onAuthenticated={handleAuthenticated} />
+  if (route === '#forgot-password') return <ForgotPasswordPage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#reset-password') return <ResetPasswordPage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#upload') return <UploadPage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#profile') return <ProfilePage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#profile/edit') return <EditProfilePage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#downloads') return <DownloadHistoryPage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#notifications') return <NotificationsPage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#settings') return <AccountSettingsPage authenticated={authenticated} onLogout={handleLogout} />
+  if (route === '#favorites') return <FavoriteDocumentsPage authenticated={authenticated} onLogout={handleLogout} />
 
   return <HomePage authenticated={authenticated} onLogout={handleLogout} />
 }

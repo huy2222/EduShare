@@ -35,8 +35,11 @@ class LinkTokenServiceTest {
     void rejectsTamperedLinkToken() {
         LinkTokenService service = service(10);
         String token = service.issue("user-1", "google-sub-1", "student@example.com");
-        char replacement = token.endsWith("A") ? 'B' : 'A';
-        String tampered = token.substring(0, token.length() - 1) + replacement;
+        String[] tokenParts = token.split("\\.");
+        String signature = tokenParts[2];
+        char replacement = signature.charAt(0) == 'A' ? 'B' : 'A';
+        String tampered = tokenParts[0] + "." + tokenParts[1] + "."
+                + replacement + signature.substring(1);
 
         assertError(service, tampered, ErrorCode.LINK_TOKEN_INVALID);
     }

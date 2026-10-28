@@ -31,8 +31,11 @@ class JwtServiceSecurityTest {
     void rejectsExpiredAndTamperedTokens() {
         JwtService validIssuer = new JwtService(SECRET, 3600, "edushare-test");
         String validToken = validIssuer.generateToken(activeUser());
-        String tampered = validToken.substring(0, validToken.length() - 1)
-                + (validToken.endsWith("a") ? "b" : "a");
+        String[] tokenParts = validToken.split("\\.");
+        String signature = tokenParts[2];
+        char replacement = signature.charAt(0) == 'a' ? 'b' : 'a';
+        String tampered = tokenParts[0] + "." + tokenParts[1] + "."
+                + replacement + signature.substring(1);
         JwtService expiredIssuer = new JwtService(SECRET, -1, "edushare-test");
         String expiredToken = expiredIssuer.generateToken(activeUser());
 
