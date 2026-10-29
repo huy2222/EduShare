@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-=======
 import { useEffect, useRef, useState } from 'react'
->>>>>>> f6ec953979c446d35d8603de8fd66a5925d4c2d9
+import { Link } from 'react-router-dom'
 import { HomeHeader } from './HomePage'
 import { getAcademicCatalog, uploadDocument } from '../services/documentApi'
 import '../styles/upload.css'

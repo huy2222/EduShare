@@ -1,6 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import UploadPage from './UploadPage'
 import { getAcademicCatalog, uploadDocument } from '../services/documentApi'
 
@@ -8,6 +9,8 @@ vi.mock('../services/documentApi', () => ({
   getAcademicCatalog: vi.fn(),
   uploadDocument: vi.fn(),
 }))
+
+const renderUploadPage = () => render(<MemoryRouter><UploadPage authenticated /></MemoryRouter>)
 
 describe('UploadPage', () => {
   beforeEach(() => {
@@ -42,7 +45,7 @@ describe('UploadPage', () => {
   })
 
   it('only enables submission after required data is entered and asks for confirmation', async () => {
-    const { container } = render(<UploadPage authenticated />)
+    const { container } = renderUploadPage()
 
     await screen.findByRole('option', { name: 'Khoa Công nghệ Thông tin' })
     const submitButton = screen.getByRole('button', { name: 'Gửi tài liệu' })
@@ -80,7 +83,7 @@ describe('UploadPage', () => {
 
   it('shows an error toast when the upload fails', async () => {
     uploadDocument.mockRejectedValueOnce(new Error('R2 không phản hồi.'))
-    const { container } = render(<UploadPage authenticated />)
+    const { container } = renderUploadPage()
 
     await screen.findByRole('option', { name: 'Khoa Công nghệ Thông tin' })
     fireEvent.change(screen.getByLabelText(/Tiêu đề tài liệu/), {
