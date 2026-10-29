@@ -1,14 +1,15 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { HomeHeader } from './HomePage'
 import '../styles/profile.css'
 
 const sidebarItems = [
-  { icon: 'user', label: 'Hồ sơ cá nhân', href: '#profile', key: 'profile' },
-  { icon: 'folder', label: 'Tài liệu của tôi', href: '#my-documents', key: 'documents' },
-  { icon: 'bookmark', label: 'Tài liệu yêu thích', href: '#favorites', key: 'favorites' },
-  { icon: 'download', label: 'Lịch sử tải xuống', href: '#downloads', key: 'downloads' },
-  { icon: 'bell', label: 'Thông báo', href: '#notifications', key: 'notifications' },
-  { icon: 'settings', label: 'Cài đặt tài khoản', href: '#settings', key: 'settings' },
+  { icon: 'user', label: 'Hồ sơ cá nhân', href: '/profile', key: 'profile' },
+  { icon: 'folder', label: 'Tài liệu của tôi', href: '/my-documents', key: 'documents' },
+  { icon: 'bookmark', label: 'Tài liệu yêu thích', href: '/favorites', key: 'favorites' },
+  { icon: 'download', label: 'Lịch sử tải xuống', href: '/downloads', key: 'downloads' },
+  { icon: 'bell', label: 'Thông báo', href: '/notifications', key: 'notifications' },
+  { icon: 'settings', label: 'Cài đặt tài khoản', href: '/settings', key: 'settings' },
 ]
 
 const stats = [
@@ -67,10 +68,10 @@ function ProfileSidebar({ active = 'profile', editMode = false }) {
       <p>WORKSPACE</p>
       <nav aria-label="Không gian cá nhân">
         {sidebarItems.map((item) => (
-          <a className={active === item.key ? 'profile-sidebar__active' : ''} href={item.href} key={item.key}>
+          <Link className={active === item.key ? 'profile-sidebar__active' : ''} to={item.href} key={item.key}>
             <ProfileIcon name={item.icon} size={18} />
             {item.label}
-          </a>
+          </Link>
         ))}
       </nav>
       {editMode && (
@@ -133,7 +134,7 @@ export function ProfilePage({ authenticated = false, onLogout = () => {} }) {
           <p className="profile-meta"><ProfileIcon name="calendar" size={15} /> Tham gia: Tháng 9, 2022 <i>•</i> <ProfileIcon name="verified" size={16} /> Đã xác thực tài khoản sinh viên</p>
         </div>
         <div className="profile-overview-card__actions">
-          <a href="#profile/edit"><ProfileIcon name="edit" size={17} /> Chỉnh sửa hồ sơ</a>
+          <Link to="/profile/edit"><ProfileIcon name="edit" size={17} /> Chỉnh sửa hồ sơ</Link>
           <button type="button"><ProfileIcon name="share" size={17} /> Chia sẻ hồ sơ</button>
         </div>
       </section>
@@ -149,7 +150,7 @@ export function ProfilePage({ authenticated = false, onLogout = () => {} }) {
 
       <div className="profile-dashboard-grid">
         <section className="profile-panel profile-activity">
-          <header><h2>Hoạt động gần đây</h2><a href="#all-activities">Xem tất cả</a></header>
+          <header><h2>Hoạt động gần đây</h2><Link to="/activities">Xem tất cả</Link></header>
           <div className="profile-activity__list">
             {activities.map((activity, index) => (
               <article key={index}>
@@ -164,15 +165,15 @@ export function ProfilePage({ authenticated = false, onLogout = () => {} }) {
           <section className="profile-panel profile-quick-actions">
             <h2>Thao tác nhanh</h2>
             <p>Các lối tắt truy cập nhanh các tính năng quản lý tài liệu học tập của bạn.</p>
-            <a className="profile-quick-actions__primary" href="#upload"><ProfileIcon name="cloud" size={19} /><span><strong>Tải tài liệu lên</strong><small>Chia sẻ tài liệu cho cộng đồng</small></span><ProfileIcon name="arrow" size={18} /></a>
-            <a href="#my-documents"><ProfileIcon name="folder" size={19} /><span><strong>Quản lý tài liệu</strong><small>Xem và chỉnh sửa tài liệu đã đăng</small></span><ProfileIcon name="arrow" size={18} /></a>
-            <a href="#favorites"><ProfileIcon name="bookmark" size={19} /><span><strong>Tài liệu yêu thích</strong><small>Truy cập nhanh tài liệu đã lưu</small></span><ProfileIcon name="arrow" size={18} /></a>
+            <Link className="profile-quick-actions__primary" to="/upload"><ProfileIcon name="cloud" size={19} /><span><strong>Tải tài liệu lên</strong><small>Chia sẻ tài liệu cho cộng đồng</small></span><ProfileIcon name="arrow" size={18} /></Link>
+            <Link to="/my-documents"><ProfileIcon name="folder" size={19} /><span><strong>Quản lý tài liệu</strong><small>Xem và chỉnh sửa tài liệu đã đăng</small></span><ProfileIcon name="arrow" size={18} /></Link>
+            <Link to="/favorites"><ProfileIcon name="bookmark" size={19} /><span><strong>Tài liệu yêu thích</strong><small>Truy cập nhanh tài liệu đã lưu</small></span><ProfileIcon name="arrow" size={18} /></Link>
           </section>
           <section className="profile-student-card">
             <span><ProfileIcon name="shield" size={23} /></span>
             <div><h3>Tài khoản Sinh viên</h3><p>Quyền lợi đầy đủ trên EduShare</p></div>
             <p>Bạn có quyền tải xuống không giới hạn các tài liệu học tập chuẩn từ trường Đại học.</p>
-            <a href="#membership">Xem chính sách thành viên</a>
+            <Link to="/membership">Xem chính sách thành viên</Link>
           </section>
         </aside>
       </div>
@@ -210,7 +211,7 @@ export function EditProfilePage({ authenticated = false, onLogout = () => {} }) 
     <ProfileShell authenticated={authenticated} editMode onLogout={onLogout}>
       <div className="profile-edit-heading">
         <div>
-          <nav><a href="#home">Trang chủ</a><span>›</span><a href="#profile">Không gian cá nhân</a><span>›</span><strong>Chỉnh sửa hồ sơ</strong></nav>
+          <nav><Link to="/">Trang chủ</Link><span>›</span><Link to="/profile">Không gian cá nhân</Link><span>›</span><strong>Chỉnh sửa hồ sơ</strong></nav>
           <h1>Chỉnh sửa hồ sơ cá nhân</h1>
           <p>Cập nhật thông tin học tập, thông tin liên hệ và tùy chỉnh nhận diện tài khoản EduShare của bạn.</p>
         </div>
@@ -243,7 +244,7 @@ export function EditProfilePage({ authenticated = false, onLogout = () => {} }) 
               ))}
             </div>
           </fieldset>
-          <div className="profile-form-actions"><p><ProfileIcon name="info" size={16} /> Mọi thay đổi sẽ có hiệu lực tức thì trên toàn bộ trang cá nhân của bạn.</p><a href="#profile">Hủy bỏ</a><button type="submit"><ProfileIcon name="save" size={16} /> Lưu thay đổi</button></div>
+          <div className="profile-form-actions"><p><ProfileIcon name="info" size={16} /> Mọi thay đổi sẽ có hiệu lực tức thì trên toàn bộ trang cá nhân của bạn.</p><Link to="/profile">Hủy bỏ</Link><button type="submit"><ProfileIcon name="save" size={16} /> Lưu thay đổi</button></div>
         </section>
 
         <section className="profile-form-section">

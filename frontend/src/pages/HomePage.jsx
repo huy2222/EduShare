@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import brandMark from '../assets/brand-mark.svg'
 import '../styles/home.css'
 
@@ -113,18 +114,18 @@ export function HomeHeader({
   return (
     <header className="home-header">
       <div className="home-header__inner">
-        <a className="home-brand" href="#home" aria-label="EduShare - Trang chủ">
+        <Link className="home-brand" to="/" aria-label="EduShare - Trang chủ">
           <span className="home-brand__mark" aria-hidden="true">
             <img src={brandMark} alt="" width="22" height="18" />
           </span>
           <span>EduShare</span>
-        </a>
+        </Link>
 
         <nav className="home-nav" aria-label="Điều hướng chính">
-          <a className={`home-nav__link${activePage === 'home' ? ' home-nav__link--active' : ''}`} href="#home">Trang chủ</a>
-          <a className="home-nav__link" href="#popular-courses">Khám phá tài liệu</a>
-          <a className="home-nav__link" href="#popular-courses">Môn học</a>
-          <a className={`home-nav__link${activePage === 'upload' ? ' home-nav__link--active' : ''}`} href="#upload">Tải lên</a>
+          <Link className={`home-nav__link${activePage === 'home' ? ' home-nav__link--active' : ''}`} to="/">Trang chủ</Link>
+          <Link className="home-nav__link" to="/explore">Khám phá tài liệu</Link>
+          <Link className="home-nav__link" to="/subjects">Môn học</Link>
+          <Link className={`home-nav__link${activePage === 'upload' ? ' home-nav__link--active' : ''}`} to="/upload">Tải lên</Link>
         </nav>
 
         <div className="home-header__actions">
@@ -142,28 +143,28 @@ export function HomeHeader({
             </label>
           </form>
 
-          <a className="home-notification" href="#notifications" aria-label="Thông báo">
+          <Link className="home-notification" to="/notifications" aria-label="Thông báo">
             <Icon name="bell" size={19} />
             <span aria-hidden="true" />
-          </a>
+          </Link>
 
           {authenticated ? (
             <div className="home-profile-menu">
-              <a className="home-profile" href="#profile" aria-label="Mở hồ sơ cá nhân">
+              <Link className="home-profile" to="/profile" aria-label="Mở hồ sơ cá nhân">
                 <span className="home-profile__name">Student</span>
                 <span className="home-profile__avatar" aria-hidden="true"><Icon name="user" size={16} /></span>
                 <Icon className="home-profile__chevron" name="down" size={14} />
                 <span className="sr-only">Tài khoản</span>
-              </a>
+              </Link>
               <div className="home-profile-menu__popover">
-                <a href="#profile"><Icon name="user" size={16} /> Hồ sơ cá nhân</a>
+                <Link to="/profile"><Icon name="user" size={16} /> Hồ sơ cá nhân</Link>
                 <button aria-label="Đăng xuất" onClick={onLogout} type="button">Đăng xuất</button>
               </div>
             </div>
           ) : (
             <div className="home-auth-actions">
-              <a className="home-auth-actions__login" href="#login">Đăng nhập</a>
-              <a className="home-auth-actions__register" href="#register">Đăng ký</a>
+              <Link className="home-auth-actions__login" to="/login">Đăng nhập</Link>
+              <Link className="home-auth-actions__register" to="/register">Đăng ký</Link>
             </div>
           )}
         </div>
@@ -174,10 +175,10 @@ export function HomeHeader({
 
 function SectionLink({ children }) {
   return (
-    <a className="home-section__link" href="#all" onClick={(event) => event.preventDefault()}>
+    <Link className="home-section__link" to="/explore">
       {children}
       <Icon name="arrow" size={19} />
-    </a>
+    </Link>
   )
 }
 

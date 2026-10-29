@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import BrandMark from '../components/BrandMark'
 import AccountLinkModal from '../components/AccountLinkModal'
 import Divider from '../components/Divider'
@@ -17,6 +18,7 @@ import {
 } from '../services/authApi'
 
 export default function LoginPage({ onAuthenticated }) {
+  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [linkToken, setLinkToken] = useState(null)
   const [googleError, setGoogleError] = useState('')
@@ -36,7 +38,7 @@ export default function LoginPage({ onAuthenticated }) {
     if (onAuthenticated) {
       onAuthenticated()
     } else {
-      window.location.hash = '#home'
+      navigate('/', { replace: true })
     }
   }
 
@@ -167,9 +169,9 @@ export default function LoginPage({ onAuthenticated }) {
             required
             maxLength={72}
             action={
-              <a href="#forgot-password" className="text-link">
+              <Link to="/forgot-password" className="text-link">
                 Quên mật khẩu?
-              </a>
+              </Link>
             }
             trailingAction={
               <button
@@ -210,7 +212,7 @@ export default function LoginPage({ onAuthenticated }) {
 
         <p className="signup-copy">
           Chưa có tài khoản?{' '}
-          <a href="#register">Đăng ký ngay</a>
+          <Link to="/register">Đăng ký ngay</Link>
         </p>
       </section>
 

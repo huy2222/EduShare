@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -10,14 +11,8 @@ import { AccountSettingsPage, FavoriteDocumentsPage } from './pages/SettingsFavo
 import { getCurrentUser, logout } from './services/authApi'
 
 export default function App() {
-  const [route, setRoute] = useState(() => window.location.hash || '#home')
   const [authenticated, setAuthenticated] = useState(false)
-
-  useEffect(() => {
-    const handleRouteChange = () => setRoute(window.location.hash || '#home')
-    window.addEventListener('hashchange', handleRouteChange)
-    return () => window.removeEventListener('hashchange', handleRouteChange)
-  }, [])
+  const navigate = useNavigate()
 
   useEffect(() => {
     let active = true
@@ -29,7 +24,7 @@ export default function App() {
 
   const handleAuthenticated = () => {
     setAuthenticated(true)
-    window.location.hash = '#home'
+    navigate('/', { replace: true })
   }
 
   const handleLogout = async () => {
@@ -40,21 +35,29 @@ export default function App() {
       // server-side logout endpoint remains idempotent on the next attempt.
     } finally {
       setAuthenticated(false)
-      window.location.hash = '#home'
+      navigate('/', { replace: true })
     }
   }
 
-  if (route === '#login') return <LoginPage onAuthenticated={handleAuthenticated} />
-  if (route === '#register') return <RegisterPage onAuthenticated={handleAuthenticated} />
-  if (route === '#forgot-password') return <ForgotPasswordPage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#reset-password') return <ResetPasswordPage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#upload') return <UploadPage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#profile') return <ProfilePage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#profile/edit') return <EditProfilePage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#downloads') return <DownloadHistoryPage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#notifications') return <NotificationsPage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#settings') return <AccountSettingsPage authenticated={authenticated} onLogout={handleLogout} />
-  if (route === '#favorites') return <FavoriteDocumentsPage authenticated={authenticated} onLogout={handleLogout} />
+  const sharedProps = { authenticated, onLogout: handleLogout }
 
-  return <HomePage authenticated={authenticated} onLogout={handleLogout} />
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage {...sharedProps} />} />
+      <Route path="/explore" element={<HomePage {...sharedProps} />} />
+      <Route path="/subjects" element={<HomePage {...sharedProps} />} />
+      <Route path="/login" element={<LoginPage onAuthenticated={handleAuthenticated} />} />
+      <Route path="/register" element={<RegisterPage onAuthenticated={handleAuthenticated} />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage {...sharedProps} />} />
+      <Route path="/reset-password" element={<ResetPasswordPage {...sharedProps} />} />
+      <Route path="/upload" element={<UploadPage {...sharedProps} />} />
+      <Route path="/profile" element={<ProfilePage {...sharedProps} />} />
+      <Route path="/profile/edit" element={<EditProfilePage {...sharedProps} />} />
+      <Route path="/downloads" element={<DownloadHistoryPage {...sharedProps} />} />
+      <Route path="/notifications" element={<NotificationsPage {...sharedProps} />} />
+      <Route path="/settings" element={<AccountSettingsPage {...sharedProps} />} />
+      <Route path="/favorites" element={<FavoriteDocumentsPage {...sharedProps} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
 }

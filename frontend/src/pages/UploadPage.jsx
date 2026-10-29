@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { HomeHeader } from './HomePage'
 import '../styles/upload.css'
 
@@ -116,9 +117,9 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
         <div className="upload-page-header">
           <div>
             <nav className="upload-breadcrumb" aria-label="Đường dẫn trang">
-              <a href="#home">Trang chủ</a>
+              <Link to="/">Trang chủ</Link>
               <UploadIcon name="chevron" size={16} />
-              <a href="#my-documents">Tài liệu của tôi</a>
+              <Link to="/my-documents">Tài liệu của tôi</Link>
               <UploadIcon name="chevron" size={16} />
               <span>Tải lên</span>
             </nav>
@@ -127,10 +128,10 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
           </div>
 
           <div className="upload-page-actions">
-            <a className="upload-button upload-button--cancel" href="#home">
+            <Link className="upload-button upload-button--cancel" to="/">
               <UploadIcon name="close" size={18} />
               Hủy
-            </a>
+            </Link>
             <button className="upload-button upload-button--submit" form="upload-document-form" type="submit">
               <UploadIcon name="cloud" size={21} />
               Gửi tài liệu

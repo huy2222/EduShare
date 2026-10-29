@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import App from './App'
 import { login } from './services/authApi'
 
@@ -17,18 +18,17 @@ vi.mock('./services/authApi', async () => {
 
 describe('App authentication navigation', () => {
   beforeEach(() => {
-    window.location.hash = ''
     localStorage.clear()
     sessionStorage.clear()
     vi.clearAllMocks()
   })
 
   it('opens the home page first and exposes login and registration actions', () => {
-    render(<App />)
+    render(<MemoryRouter><App /></MemoryRouter>)
 
     expect(screen.getByRole('heading', { name: /Kho tài liệu học tập/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Đăng nhập' })).toHaveAttribute('href', '#login')
-    expect(screen.getByRole('link', { name: 'Đăng ký' })).toHaveAttribute('href', '#register')
+    expect(screen.getByRole('link', { name: 'Đăng nhập' })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: 'Đăng ký' })).toHaveAttribute('href', '/register')
   })
 
   it('returns home after login and allows the user to log out', async () => {
@@ -36,7 +36,7 @@ describe('App authentication navigation', () => {
       code: 1000,
       result: { token: 'session-jwt', authenticated: true },
     })
-    render(<App />)
+    render(<MemoryRouter><App /></MemoryRouter>)
 
     fireEvent.click(screen.getByRole('link', { name: 'Đăng nhập' }))
     await screen.findByRole('heading', { name: 'Chào mừng bạn quay lại!' })

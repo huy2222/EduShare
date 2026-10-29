@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ProfileIcon, ProfileShell } from './ProfilePages'
 import '../styles/settings-favorites.css'
 
@@ -39,7 +40,7 @@ export function AccountSettingsPage({ authenticated = false, onLogout = () => {}
       <div className="settings-layout">
         <div className="settings-layout__main">
           <section className="settings-card account-info-card">
-            <header><h2>Thông tin tài khoản</h2><a href="#profile/edit"><ProfileIcon name="edit" size={16} /> Chỉnh sửa hồ sơ</a></header>
+            <header><h2>Thông tin tài khoản</h2><Link to="/profile/edit"><ProfileIcon name="edit" size={16} /> Chỉnh sửa hồ sơ</Link></header>
             <div className="account-info-card__person">
               <span className="account-avatar">NA</span>
               <div><h3>Nguyễn Văn An</h3><p>student@edushare.edu.vn</p><span>Sinh viên năm 3</span><small>Khoa Công nghệ Thông tin</small></div>
@@ -49,7 +50,7 @@ export function AccountSettingsPage({ authenticated = false, onLogout = () => {}
 
           <section className="settings-card security-card">
             <header><div><h2>Bảo mật tài khoản</h2><p>Quản lý mật khẩu và các thiết lập bảo mật đăng nhập</p></div><span><ProfileIcon name="shield" size={19} /></span></header>
-            <div className="security-row"><div><strong>Mật khẩu</strong><p>Cập nhật lần cuối 3 tháng trước</p></div><a href="#forgot-password">Đổi mật khẩu</a></div>
+            <div className="security-row"><div><strong>Mật khẩu</strong><p>Cập nhật lần cuối 3 tháng trước</p></div><Link to="/forgot-password">Đổi mật khẩu</Link></div>
             <div className="security-row"><div><strong>Xác thực 2 bước (2FA)</strong><p>Bảo vệ tài khoản với mã OTP qua email</p></div><Toggle checked={twoFactor} label="Xác thực hai bước" onChange={setTwoFactor} /></div>
           </section>
         </div>
