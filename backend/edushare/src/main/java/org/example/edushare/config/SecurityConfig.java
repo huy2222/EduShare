@@ -47,6 +47,8 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(request -> request
                 .requestMatchers(HttpMethod.GET, "/auth/csrf", "/api/v1/auth/csrf")
                 .permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/academic/**")
+                .permitAll()
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                 .permitAll()
@@ -60,6 +62,8 @@ public class SecurityConfig {
                 .authenticationEntryPoint(new JwtAuthenticationEntryPoint()));
 
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfRepository.setCookieName("XSRF-TOKEN");
+        csrfRepository.setHeaderName("X-XSRF-TOKEN");
         csrfRepository.setCookiePath(cookieProperties.getPath());
         csrfRepository.setCookieCustomizer(builder -> builder
                 .secure(cookieProperties.isSecure())

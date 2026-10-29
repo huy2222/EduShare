@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+=======
+import { useEffect, useRef, useState } from 'react'
+>>>>>>> f6ec953979c446d35d8603de8fd66a5925d4c2d9
 import { HomeHeader } from './HomePage'
+import { getAcademicCatalog, uploadDocument } from '../services/documentApi'
 import '../styles/upload.css'
 
 const reviewRules = [
@@ -19,11 +24,13 @@ const reviewRules = [
 ]
 
 const documentTypes = [
-  { value: 'slide', label: 'Bài giảng / Slide', icon: 'play' },
-  { value: 'exam', label: 'Đề thi / Kiểm tra', icon: 'quiz' },
-  { value: 'notes', label: 'Tóm tắt / Ghi chép', icon: 'notes' },
-  { value: 'textbook', label: 'Giáo trình / Đề cương', icon: 'book' },
+  { value: 'LECTURE_NOTE', label: 'Bài giảng / Slide', icon: 'play' },
+  { value: 'EXAM', label: 'Đề thi / Kiểm tra', icon: 'quiz' },
+  { value: 'SUMMARY', label: 'Tóm tắt / Ghi chép', icon: 'notes' },
+  { value: 'TEXTBOOK', label: 'Giáo trình / Đề cương', icon: 'book' },
 ]
+
+const MAX_FILE_SIZE = 25 * 1024 * 1024
 
 function UploadIcon({ name, size = 22 }) {
   const paths = {
@@ -79,14 +86,152 @@ function CardHeading({ icon, tone = 'blue', title, subtitle }) {
 }
 
 export default function UploadPage({ authenticated = false, onLogout = () => {} }) {
+  const uploadFormRef = useRef(null)
   const [searchInput, setSearchInput] = useState('')
-  const [documentType, setDocumentType] = useState('slide')
+  const [title, setTitle] = useState('')
+  const [documentType, setDocumentType] = useState('LECTURE_NOTE')
   const [semesterEnabled, setSemesterEnabled] = useState(true)
   const [tags, setTags] = useState(['Java', 'Cấu trúc dữ liệu', 'Stack', 'Queue'])
   const [tagInput, setTagInput] = useState('')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [faculties, setFaculties] = useState([])
+  const [facultyId, setFacultyId] = useState('')
+  const [majorId, setMajorId] = useState('')
+  const [subjectId, setSubjectId] = useState('')
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [confirmationOpen, setConfirmationOpen] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  const selectedFaculty = faculties.find((faculty) => String(faculty.id) === facultyId)
+  const availableMajors = selectedFaculty?.majors || []
+  const selectedMajor = availableMajors.find((major) => String(major.id) === majorId)
+  const availableSubjects = selectedMajor?.subjects || []
+  const formComplete = Boolean(
+    title.trim()
+      && selectedFile
+      && selectedFile.size <= MAX_FILE_SIZE
+      && facultyId
+      && majorId
+      && subjectId
+      && documentType,
+  )
+
+  useEffect(() => {
+    let active = true
+
+    getAcademicCatalog()
+      .then((response) => {
+        if (!active) return
+        const nextFaculties = response.result || []
+        const firstFaculty = nextFaculties[0]
+        const firstMajor = firstFaculty?.majors?.[0]
+        const firstSubject = firstMajor?.subjects?.[0]
+
+        setFaculties(nextFaculties)
+        setFacultyId(firstFaculty ? String(firstFaculty.id) : '')
+        setMajorId(firstMajor ? String(firstMajor.id) : '')
+        setSubjectId(firstSubject ? String(firstSubject.id) : '')
+      })
+      .catch((error) => {
+        if (active) setCatalogError(error.message || 'Không thể tải danh mục học vụ.')
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false)
+      })
+
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!toast) return undefined
+
+    const timeoutId = window.setTimeout(() => setToast(null), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [toast])
 
   const handleSearch = (event) => {
     event.preventDefault()
+  }
+
+  const handleFacultyChange = (event) => {
+    const nextFacultyId = event.target.value
+    const nextFaculty = faculties.find((faculty) => String(faculty.id) === nextFacultyId)
+    const firstMajor = nextFaculty?.majors?.[0]
+    const firstSubject = firstMajor?.subjects?.[0]
+
+    setFacultyId(nextFacultyId)
+    setMajorId(firstMajor ? String(firstMajor.id) : '')
+    setSubjectId(firstSubject ? String(firstSubject.id) : '')
+  }
+
+  const handleMajorChange = (event) => {
+    const nextMajorId = event.target.value
+    const nextMajor = availableMajors.find((major) => String(major.id) === nextMajorId)
+    const firstSubject = nextMajor?.subjects?.[0]
+
+    setMajorId(nextMajorId)
+    setSubjectId(firstSubject ? String(firstSubject.id) : '')
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    setToast(null)
+
+    if (!authenticated) {
+      setToast({ type: 'error', message: 'Vui lòng đăng nhập trước khi tải tài liệu.' })
+      return
+    }
+    if (!selectedFile) {
+      setToast({ type: 'error', message: 'Vui lòng chọn tệp tài liệu.' })
+      return
+    }
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setToast({ type: 'error', message: 'Tệp tài liệu không được vượt quá 25MB.' })
+      return
+    }
+    if (!facultyId || !majorId || !subjectId) {
+      setToast({ type: 'error', message: 'Vui lòng chọn đầy đủ khoa, ngành và môn học.' })
+      return
+    }
+
+    setConfirmationOpen(true)
+  }
+
+  const handleConfirmedSubmit = async () => {
+    const form = uploadFormRef.current
+    if (!form || submitting) return
+
+    const formData = new FormData(form)
+    const metadata = {
+      title: title.trim(),
+      description: String(formData.get('description') || '').trim() || null,
+      documentType,
+      semester: semesterEnabled ? formData.get('semester') : null,
+      academicYear: semesterEnabled ? formData.get('academicYear') : null,
+      facultyId,
+      majorId,
+      subjectId,
+    }
+
+    setSubmitting(true)
+    try {
+      const response = await uploadDocument(metadata, selectedFile)
+      setConfirmationOpen(false)
+      setToast({
+        type: 'success',
+        message: `Tải lên thành công. Tài liệu “${response.result.title}” đang chờ kiểm duyệt.`,
+      })
+    } catch (error) {
+      setConfirmationOpen(false)
+      setToast({
+        type: 'error',
+        message: error.message || 'Không thể tải tài liệu lên. Vui lòng thử lại.',
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const addTag = (value) => {
@@ -124,25 +269,15 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
               <span>Tải lên</span>
             </nav>
             <h1>Tải tài liệu lên</h1>
-            <p>Chia sẻ tài liệu học tập hữu ích<br />với cộng đồng sinh viên và giảng<br />viên EduShare.</p>
-          </div>
-
-          <div className="upload-page-actions">
-            <Link className="upload-button upload-button--cancel" to="/">
-              <UploadIcon name="close" size={18} />
-              Hủy
-            </Link>
-            <button className="upload-button upload-button--submit" form="upload-document-form" type="submit">
-              <UploadIcon name="cloud" size={21} />
-              Gửi tài liệu
-            </button>
           </div>
         </div>
 
         <form
+          aria-busy={submitting}
           className="upload-layout"
           id="upload-document-form"
-          onSubmit={(event) => event.preventDefault()}
+          onSubmit={handleSubmit}
+          ref={uploadFormRef}
         >
           <div className="upload-layout__main">
             <section className="upload-card upload-file-card" aria-labelledby="upload-file-title">
@@ -150,23 +285,26 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
                 <CardHeading
                   icon="fileUpload"
                   title="Tệp tài liệu"
-                  subtitle="Dung lượng tối đa cho mỗi tệp là 50MB"
+                  subtitle="Dung lượng tối đa cho mỗi tệp là 25MB"
                 />
                 <span className="upload-required-pill">Bắt buộc</span>
               </div>
 
               <label className="upload-dropzone" htmlFor="document-file">
                 <input
-                  accept=".pdf,.docx,.pptx,.zip"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
                   className="upload-file-input"
                   id="document-file"
                   name="documentFile"
+                  onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
                   required
                   type="file"
                 />
                 <span className="upload-dropzone__icon"><UploadIcon name="folderUpload" size={37} /></span>
-                <span className="upload-dropzone__title"><b>Kéo thả tệp vào đây</b> hoặc chọn tệp từ thiết bị</span>
-                <span className="upload-dropzone__caption">Hỗ trợ định dạng: <strong>PDF, DOCX, PPTX, ZIP</strong></span>
+                <span className="upload-dropzone__title">
+                  {selectedFile ? <b>{selectedFile.name}</b> : <><b>Kéo thả tệp vào đây</b> hoặc chọn tệp từ thiết bị</>}
+                </span>
+                <span className="upload-dropzone__caption">Hỗ trợ tối đa 25MB: <strong>PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT</strong></span>
               </label>
             </section>
 
@@ -183,9 +321,11 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
                   <span>Tiêu đề tài liệu <b>*</b></span>
                   <input
                     name="title"
+                    onChange={(event) => setTitle(event.target.value)}
                     placeholder="VD: Slide bài giảng Cấu trúc dữ liệu và Giải thuật - Chương 1"
                     required
                     type="text"
+                    value={title}
                   />
                 </label>
 
@@ -204,29 +344,53 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
                 <div className="upload-select-grid">
                   <label className="upload-field">
                     <span>Khoa <b>*</b></span>
-                    <select defaultValue="information-technology" name="faculty" required>
-                      <option value="information-technology">Khoa Công nghệ Thông tin</option>
-                      <option value="economics">Khoa Kinh tế</option>
-                      <option value="electrical">Khoa Điện - Điện tử</option>
+                    <select
+                      disabled={catalogLoading}
+                      name="facultyId"
+                      onChange={handleFacultyChange}
+                      required
+                      value={facultyId}
+                    >
+                      <option value="">{catalogLoading ? 'Đang tải danh mục...' : 'Chọn khoa'}</option>
+                      {faculties.map((faculty) => (
+                        <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
+                      ))}
                     </select>
                   </label>
                   <label className="upload-field">
                     <span>Ngành <b>*</b></span>
-                    <select defaultValue="software-engineering" name="major" required>
-                      <option value="software-engineering">Kỹ thuật Phần mềm</option>
-                      <option value="information-systems">Hệ thống Thông tin</option>
-                      <option value="computer-science">Khoa học Máy tính</option>
+                    <select
+                      disabled={!facultyId || catalogLoading}
+                      name="majorId"
+                      onChange={handleMajorChange}
+                      required
+                      value={majorId}
+                    >
+                      <option value="">Chọn ngành</option>
+                      {availableMajors.map((major) => (
+                        <option key={major.id} value={major.id}>{major.name}</option>
+                      ))}
                     </select>
                   </label>
                   <label className="upload-field">
                     <span>Môn học <b>*</b></span>
-                    <select defaultValue="int1301" name="subject" required>
-                      <option value="int1301">INT1301 - Cấu trúc dữ liệu &amp; Giải thuật</option>
-                      <option value="int1306">INT1306 - Lập trình hướng đối tượng</option>
-                      <option value="int1415">INT1415 - Cơ sở dữ liệu</option>
+                    <select
+                      disabled={!majorId || catalogLoading}
+                      name="subjectId"
+                      onChange={(event) => setSubjectId(event.target.value)}
+                      required
+                      value={subjectId}
+                    >
+                      <option value="">Chọn môn học</option>
+                      {availableSubjects.map((subject) => (
+                        <option key={subject.id} value={subject.id}>
+                          {subject.code} - {subject.name}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
+                {catalogError && <p className="upload-field-error" role="alert">{catalogError}</p>}
 
                 <fieldset className="upload-document-types">
                   <legend>Loại tài liệu <b>*</b></legend>
@@ -271,10 +435,10 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
                     <div className="upload-semester-grid">
                       <label className="upload-field">
                         <span>Học kỳ</span>
-                        <select defaultValue="semester-1" name="semester">
-                          <option value="semester-1">Học kỳ 1</option>
-                          <option value="semester-2">Học kỳ 2</option>
-                          <option value="summer">Học kỳ hè</option>
+                        <select defaultValue="FIRST" name="semester">
+                          <option value="FIRST">Học kỳ 1</option>
+                          <option value="SECOND">Học kỳ 2</option>
+                          <option value="SUMMER">Học kỳ hè</option>
                         </select>
                       </label>
                       <label className="upload-field">
@@ -331,6 +495,17 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
                 </section>
               </div>
             </section>
+
+            <div className="upload-form-actions">
+              <button
+                className="upload-button upload-button--submit"
+                disabled={!formComplete || submitting || catalogLoading}
+                type="submit"
+              >
+                <UploadIcon name="cloud" size={21} />
+                Gửi tài liệu
+              </button>
+            </div>
           </div>
 
           <aside className="upload-layout__aside">
@@ -366,8 +541,66 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
               </div>
             </section>
           </aside>
+
         </form>
       </main>
+
+      {confirmationOpen && (
+        <div
+          className="upload-confirm-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !submitting) setConfirmationOpen(false)
+          }}
+          role="presentation"
+        >
+          <section
+            aria-labelledby="upload-confirm-title"
+            aria-modal="true"
+            className="upload-confirm-dialog"
+            role="dialog"
+          >
+            <span className="upload-confirm-dialog__icon"><UploadIcon name="cloud" size={27} /></span>
+            <h2 id="upload-confirm-title">Xác nhận gửi tài liệu</h2>
+            <p>Bạn đã chắc chắn muốn gửi tài liệu này lên EduShare?</p>
+            <div className="upload-confirm-dialog__actions">
+              <button
+                className="upload-button upload-button--cancel"
+                disabled={submitting}
+                onClick={() => setConfirmationOpen(false)}
+                type="button"
+              >
+                Hủy
+              </button>
+              <button
+                className="upload-button upload-button--submit"
+                disabled={submitting}
+                onClick={handleConfirmedSubmit}
+                type="button"
+              >
+                <UploadIcon name="cloud" size={20} />
+                {submitting ? 'Đang gửi...' : 'Gửi tài liệu'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {toast && (
+        <div
+          aria-live="polite"
+          className={`upload-toast upload-toast--${toast.type}`}
+          role={toast.type === 'error' ? 'alert' : 'status'}
+        >
+          <span className="upload-toast__icon">
+            <UploadIcon name={toast.type === 'success' ? 'check' : 'close'} size={18} />
+          </span>
+          <p>{toast.message}</p>
+          <button aria-label="Đóng thông báo" onClick={() => setToast(null)} type="button">
+            <UploadIcon name="close" size={17} />
+          </button>
+        </div>
+      )}
+
       <footer className="upload-footer">© 2024 EduShare Platform. All rights reserved.</footer>
     </div>
   )

@@ -8,6 +8,9 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+  mail:
+    host: localhost
+    port: 2525
 
 jwt:
   signerKey: edushare-test-jwt-secret-that-is-at-least-sixty-four-bytes-long!
@@ -37,3 +40,10 @@ app:
     resend-cooldown-seconds: 60
     max-resends: 5
     hmac-secret: edushare-test-otp-hmac-secret-at-least-thirty-two-bytes
+
+cloudflare:
+  r2:
+    account-id: test-account-id
+    access-key-id: test-access-key-id
+    secret-access-key: test-secret-access-key
+    bucket-name: test-bucket

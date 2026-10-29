@@ -42,6 +42,12 @@ public enum ErrorCode {
     GOOGLE_PROVIDER_ALREADY_LINKED(1032, "Google account is already linked", HttpStatus.CONFLICT),
     LOCAL_CREDENTIALS_REQUIRED(1033, "This account does not have a local password", HttpStatus.CONFLICT),
     GOOGLE_VERIFICATION_UNAVAILABLE(1034, "Google token verification is temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+    DOCUMENT_NOT_FOUND(1035, "Document not found", HttpStatus.NOT_FOUND),
+    DOCUMENT_FILE_EMPTY(1036, "Document file must not be empty", HttpStatus.BAD_REQUEST),
+    DOCUMENT_FILE_TYPE_UNSUPPORTED(1037, "Document file type is not supported", HttpStatus.BAD_REQUEST),
+    FACULTY_NOT_FOUND(1038, "Faculty not found", HttpStatus.NOT_FOUND),
+    MAJOR_NOT_FOUND(1039, "Major not found in the selected faculty", HttpStatus.NOT_FOUND),
+    SUBJECT_NOT_FOUND(1040, "Subject not found in the selected major", HttpStatus.NOT_FOUND),
 
     @Deprecated
     INVALID_OTP(1010, "Invalid verification code", HttpStatus.BAD_REQUEST),
