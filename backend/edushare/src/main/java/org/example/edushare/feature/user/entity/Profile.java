@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -18,6 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.example.edushare.feature.academic.entity.Major;
 
 import java.time.LocalDateTime;
 
@@ -42,17 +44,21 @@ public class Profile {
     @Column(nullable = false, length = 100)
     String fullName;
 
-    @Column(length = 500)
-    String avatarUrl;
-
     @Column(length = 1000)
     String bio;
 
     @Column(length = 20)
     String phone;
 
-    @Column(unique = true, length = 50)
-    String studentCode;
+    @Column(length = 500)
+    String githubUrl;
+
+    @Column(length = 500)
+    String linkedinUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "major_id")
+    Major major;
 
     @Column(nullable = false, updatable = false)
     LocalDateTime createdAt;

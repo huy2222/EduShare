@@ -1,8 +1,5 @@
-import { apiGet, apiPostForm } from './apiClient'
-
-export function getAcademicCatalog() {
-  return apiGet('/academic/faculties')
-}
+import { apiPostForm } from './apiClient'
+export { getAcademicCatalog } from './academicApi'
 
 export function uploadDocument(metadata, file) {
   const formData = new FormData()

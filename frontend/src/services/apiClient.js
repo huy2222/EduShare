@@ -82,6 +82,18 @@ export function apiPostJson(path, body) {
   }))
 }
 
+export function apiPutJson(path, body) {
+  return requestWithCsrf(path, (csrfToken) => ({
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      [csrfToken.headerName]: csrfToken.token,
+    },
+    body: JSON.stringify(body),
+  }))
+}
+
 export function apiPostForm(path, formData) {
   return requestWithCsrf(path, (csrfToken) => ({
     method: 'POST',

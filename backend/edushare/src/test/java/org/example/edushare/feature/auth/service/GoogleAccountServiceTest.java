@@ -78,8 +78,7 @@ class GoogleAccountServiceTest {
         verify(userRepository).saveAndFlush(userCaptor.capture());
         assertThat(userCaptor.getValue().getPassword()).isNull();
         assertThat(userCaptor.getValue().getStatus()).isEqualTo(UserStatus.ACTIVE);
-        assertThat(userCaptor.getValue().getProfile().getAvatarUrl())
-                .isEqualTo("https://example.com/avatar.png");
+        assertThat(userCaptor.getValue().getProfile().getFullName()).isEqualTo("Student Name");
         ArgumentCaptor<UserAuthProvider> providerCaptor = ArgumentCaptor.forClass(UserAuthProvider.class);
         verify(providerRepository).saveAndFlush(providerCaptor.capture());
         assertThat(providerCaptor.getValue().getProvider()).isEqualTo(AuthProvider.GOOGLE);

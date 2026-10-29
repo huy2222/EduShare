@@ -65,7 +65,6 @@ public class GoogleAccountService {
                 .build();
         user.attachProfile(Profile.builder()
                 .fullName(resolveFullName(googleUser))
-                .avatarUrl(googleUser.picture())
                 .build());
 
         user = userRepository.saveAndFlush(user);
