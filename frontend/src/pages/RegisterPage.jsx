@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import AccountLinkModal from '../components/AccountLinkModal'
 import BrandMark from '../components/BrandMark'
 import Divider from '../components/Divider'
@@ -34,6 +35,7 @@ function PasswordToggle({ visible, onToggle, label }) {
 }
 
 export default function RegisterPage({ onAuthenticated }) {
+  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [fullName, setFullName] = useState('')
@@ -118,7 +120,7 @@ export default function RegisterPage({ onAuthenticated }) {
     if (onAuthenticated) {
       onAuthenticated()
     } else {
-      window.location.hash = '#home'
+      navigate('/', { replace: true })
     }
   }
 
@@ -147,7 +149,7 @@ export default function RegisterPage({ onAuthenticated }) {
         email={email}
         onVerify={handleVerify}
         onResend={handleResend}
-        onBack={() => { window.location.hash = '#login' }}
+        onBack={() => navigate('/login')}
         submitting={submitting}
         error={error}
         message={message}
@@ -254,8 +256,8 @@ export default function RegisterPage({ onAuthenticated }) {
                 disabled={awaitingVerification || verified}
               />
               <span>
-                Tôi đồng ý với các <a href="#terms">Điều khoản dịch vụ</a> và{' '}
-                <a href="#privacy">Chính sách bảo mật</a> của EduShare.
+                Tôi đồng ý với các <Link to="/terms">Điều khoản dịch vụ</Link> và{' '}
+                <Link to="/privacy">Chính sách bảo mật</Link> của EduShare.
               </span>
             </label>
 
@@ -286,7 +288,7 @@ export default function RegisterPage({ onAuthenticated }) {
 
             <p className="login-copy">
               {verified ? 'Email đã được xác thực. ' : 'Đã có tài khoản? '}
-              <a href="#login">Đăng nhập</a>
+              <Link to="/login">Đăng nhập</Link>
             </p>
           </form>
         </section>

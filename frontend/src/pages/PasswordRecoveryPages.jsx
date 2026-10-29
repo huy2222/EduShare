@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { HomeHeader } from './HomePage'
 import '../styles/recovery.css'
 
@@ -59,11 +60,12 @@ function RecoveryCardHeader({ id, title, description }) {
 }
 
 export function ForgotPasswordPage({ authenticated = false, onLogout = () => {} }) {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    window.location.hash = '#reset-password'
+    navigate('/reset-password')
   }
 
   return (
@@ -97,10 +99,10 @@ export function ForgotPasswordPage({ authenticated = false, onLogout = () => {} 
           </button>
         </form>
 
-        <a className="recovery-back" href="#login">
+        <Link className="recovery-back" to="/login">
           <RecoveryIcon name="arrowLeft" size={16} />
           Quay lại đăng nhập
-        </a>
+        </Link>
       </section>
     </RecoveryShell>
   )
@@ -186,10 +188,10 @@ export function ResetPasswordPage({ authenticated = false, onLogout = () => {} }
           </button>
         </form>
 
-        <a className="recovery-back" href="#login">
+        <Link className="recovery-back" to="/login">
           <RecoveryIcon name="arrowLeft" size={16} />
           Quay lại đăng nhập
-        </a>
+        </Link>
       </section>
     </RecoveryShell>
   )

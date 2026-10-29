@@ -1,4 +1,9 @@
+<<<<<<< HEAD
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+=======
 import { useEffect, useRef, useState } from 'react'
+>>>>>>> f6ec953979c446d35d8603de8fd66a5925d4c2d9
 import { HomeHeader } from './HomePage'
 import { getAcademicCatalog, uploadDocument } from '../services/documentApi'
 import '../styles/upload.css'
@@ -257,9 +262,9 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
         <div className="upload-page-header">
           <div>
             <nav className="upload-breadcrumb" aria-label="Đường dẫn trang">
-              <a href="#home">Trang chủ</a>
+              <Link to="/">Trang chủ</Link>
               <UploadIcon name="chevron" size={16} />
-              <a href="#my-documents">Tài liệu của tôi</a>
+              <Link to="/my-documents">Tài liệu của tôi</Link>
               <UploadIcon name="chevron" size={16} />
               <span>Tải lên</span>
             </nav>

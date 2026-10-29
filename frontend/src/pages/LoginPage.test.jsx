@@ -1,6 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
 import {
@@ -32,6 +33,8 @@ vi.mock('../services/authApi', async () => {
   }
 })
 
+const renderWithRouter = (component) => render(<MemoryRouter>{component}</MemoryRouter>)
+
 describe('LoginPage Google authentication', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -46,7 +49,7 @@ describe('LoginPage Google authentication', () => {
       result: { token: 'edushare-jwt', authenticated: true },
     })
 
-    render(<LoginPage onAuthenticated={onAuthenticated} />)
+    renderWithRouter(<LoginPage onAuthenticated={onAuthenticated} />)
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce())
@@ -68,7 +71,7 @@ describe('LoginPage Google authentication', () => {
       result: { token: 'linked-jwt', authenticated: true },
     })
 
-    render(<LoginPage />)
+    renderWithRouter(<LoginPage />)
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
     const password = await screen.findByLabelText('Mật khẩu EduShare')
     fireEvent.change(password, { target: { value: 'Password123' } })
@@ -88,7 +91,7 @@ describe('LoginPage Google authentication', () => {
     })
     linkGoogleAccount.mockRejectedValue({ code: 1031, message: 'Invalid password' })
 
-    render(<LoginPage />)
+    renderWithRouter(<LoginPage />)
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
     fireEvent.change(await screen.findByLabelText('Mật khẩu EduShare'), {
       target: { value: 'wrong-password' },
@@ -105,7 +108,7 @@ describe('LoginPage Google authentication', () => {
       result: { token: 'password-jwt', authenticated: true },
     })
 
-    render(<LoginPage onAuthenticated={onAuthenticated} />)
+    renderWithRouter(<LoginPage onAuthenticated={onAuthenticated} />)
     fireEvent.change(screen.getByLabelText('Email'), {
       target: { value: 'student@university.edu.vn' },
     })
@@ -133,7 +136,7 @@ describe('LoginPage Google authentication', () => {
       result: { token: 'registered-user-jwt', authenticated: true },
     })
 
-    render(<RegisterPage onAuthenticated={onAuthenticated} />)
+    renderWithRouter(<RegisterPage onAuthenticated={onAuthenticated} />)
     fireEvent.change(screen.getByLabelText('Họ và tên'), { target: { value: 'Nguyễn Văn A' } })
     fireEvent.change(screen.getByLabelText('Email sinh viên'), {
       target: { value: 'student@university.edu.vn' },
@@ -170,7 +173,7 @@ describe('LoginPage Google authentication', () => {
       result: { token: 'google-register-jwt', authenticated: true },
     })
 
-    render(<RegisterPage onAuthenticated={onAuthenticated} />)
+    renderWithRouter(<RegisterPage onAuthenticated={onAuthenticated} />)
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
     await waitFor(() => expect(loginWithGoogle).toHaveBeenCalledWith('google-id-token'))
