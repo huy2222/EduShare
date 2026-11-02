@@ -146,8 +146,8 @@ export default function LoginPage({ onAuthenticated }) {
         <form className="login-form" onSubmit={handleSubmit}>
           <FormField
             id="identifier"
-            label="Email"
-            type="email"
+            label="Email hoặc tài khoản"
+            type="text"
             placeholder="sinhvien@university.edu.vn"
             icon={mail}
             autoComplete="username"

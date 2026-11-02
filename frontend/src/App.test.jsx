@@ -40,7 +40,7 @@ describe('App authentication navigation', () => {
 
     fireEvent.click(screen.getByRole('link', { name: 'Đăng nhập' }))
     await screen.findByRole('heading', { name: 'Chào mừng bạn quay lại!' })
-    fireEvent.change(screen.getByLabelText('Email'), {
+    fireEvent.change(screen.getByLabelText('Email hoặc tài khoản'), {
       target: { value: 'student@university.edu.vn' },
     })
     fireEvent.change(screen.getByLabelText('Mật khẩu'), {

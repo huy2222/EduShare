@@ -109,7 +109,7 @@ describe('LoginPage Google authentication', () => {
     })
 
     renderWithRouter(<LoginPage onAuthenticated={onAuthenticated} />)
-    fireEvent.change(screen.getByLabelText('Email'), {
+    fireEvent.change(screen.getByLabelText('Email hoặc tài khoản'), {
       target: { value: 'student@university.edu.vn' },
     })
     fireEvent.change(screen.getByLabelText('Mật khẩu'), {

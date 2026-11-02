@@ -41,8 +41,16 @@ public class Subject {
     @Column(length = 1000)
     private String description;
 
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "faculty_id")
+    private Faculty faculty;
+
     @Column(nullable = false)
     private Integer credits;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean active = true;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

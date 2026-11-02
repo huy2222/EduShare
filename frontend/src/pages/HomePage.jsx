@@ -106,6 +106,7 @@ function Icon({ name, size = 18, className = '' }) {
 export function HomeHeader({
   activePage = 'home',
   authenticated,
+  currentUser,
   onLogout,
   searchInput,
   onSearchChange,
@@ -157,6 +158,7 @@ export function HomeHeader({
                 <span className="sr-only">Tài khoản</span>
               </Link>
               <div className="home-profile-menu__popover">
+                {currentUser?.roles?.includes('ADMIN') && <Link to="/admin">Quản trị hệ thống</Link>}
                 <Link to="/profile"><Icon name="user" size={16} /> Hồ sơ cá nhân</Link>
                 <button aria-label="Đăng xuất" onClick={onLogout} type="button">Đăng xuất</button>
               </div>
@@ -235,7 +237,7 @@ function DocumentCard({ document }) {
   )
 }
 
-export default function HomePage({ authenticated = false, onLogout = () => {} }) {
+export default function HomePage({ authenticated = false, currentUser, onLogout = () => {} }) {
   const [searchInput, setSearchInput] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [subject, setSubject] = useState('all')
@@ -259,6 +261,7 @@ export default function HomePage({ authenticated = false, onLogout = () => {} })
   return (
     <div className="home-page">
       <HomeHeader
+        currentUser={currentUser}
         authenticated={authenticated}
         onLogout={onLogout}
         onSearchChange={(event) => setSearchInput(event.target.value)}
