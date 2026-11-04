@@ -12,6 +12,18 @@ import java.util.Optional;
 import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, String> {
+    boolean existsByRoles_Id(String roleId);
+    @Query("select new org.example.edushare.feature.admin.dto.AdminUserRow(u.id, u.email, p.fullName, u.status, u.createdAt) "
+            + "from User u left join u.profile p where "
+            + "(:search = '' or lower(u.email) like concat('%', :search, '%') or lower(p.fullName) like concat('%', :search, '%')) "
+            + "and (:status is null or u.status = :status) "
+            + "and (:role = '' or exists (select r from u.roles r where r.name = :role))")
+    org.springframework.data.domain.Page<org.example.edushare.feature.admin.dto.AdminUserRow> searchAdminRows(
+            @Param("search") String search, @Param("role") String role,
+            @Param("status") org.example.edushare.feature.user.entity.UserStatus status, org.springframework.data.domain.Pageable pageable);
+
+    @Query("select new org.example.edushare.feature.admin.dto.AdminUserRole(u.id, r.name) from User u join u.roles r where u.id in :ids")
+    List<org.example.edushare.feature.admin.dto.AdminUserRole> findAdminRoles(@Param("ids") List<String> ids);
     boolean existsByProfileMajorId(String majorId);
 
     interface StatusCount {
@@ -30,18 +42,7 @@ public interface UserRepository extends JpaRepository<User, String> {
             + "where u.email = :email and t.id is null")
     Optional<User> findForTokenAuthorization(@Param("email") String email, @Param("tokenId") String tokenId);
 
-    @Query("select distinct u from User u left join fetch u.profile left join fetch u.roles where u.id in :ids")
-    List<User> findAdminDetails(@Param("ids") List<String> ids);
-
     long countByStatus(org.example.edushare.feature.user.entity.UserStatus status);
-
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "profile")
-    @Query("select u from User u left join u.profile p where "
-            + "(:search = '' or lower(u.email) like concat('%', :search, '%') or lower(p.fullName) like concat('%', :search, '%')) "
-            + "and (:status is null or u.status = :status) "
-            + "and (:role = '' or exists (select r from u.roles r where r.name = :role))")
-    org.springframework.data.domain.Page<User> searchAdmin(@Param("search") String search, @Param("role") String role,
-            @Param("status") org.example.edushare.feature.user.entity.UserStatus status, org.springframework.data.domain.Pageable pageable);
 
     boolean existsByEmail(String email);
 

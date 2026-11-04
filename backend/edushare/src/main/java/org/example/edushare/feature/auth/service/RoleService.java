@@ -23,6 +23,10 @@ import java.util.Locale;
 @Service
 @RequiredArgsConstructor
 public class RoleService {
+    private void protect(Role role) {
+        if (java.util.Set.of("ADMIN", "USER").contains(role.getName()))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Vai trò hệ thống được bảo vệ.");
+    }
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
@@ -62,12 +66,13 @@ public class RoleService {
     @Transactional
     public RoleResponse update(String id, RoleRequest request) {
         Role role = findRole(id);
+        protect(role);
         String name = normalizeName(request.name());
         if (roleRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new AppException(ErrorCode.ROLE_EXISTED);
         }
 
-        role.setName(name);
+        if (!role.getName().equals(name)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Không thể đổi mã vai trò.");
         role.setDescription(normalizeDescription(request.description()));
         try {
             return toResponse(roleRepository.saveAndFlush(role));
@@ -79,15 +84,15 @@ public class RoleService {
     @Transactional
     public void delete(String id) {
         Role role = findRole(id);
-        userRepository.findAllByRoles_Id(id)
-                .forEach(user -> user.getRoles()
-                        .removeIf(item -> item.getId().equals(id)));
+        protect(role);
+        if (userRepository.existsByRoles_Id(id)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Vai trò đang được sử dụng.");
         roleRepository.delete(role);
     }
 
     @Transactional
     public RoleResponse addPermission(String roleId, String permissionId) {
         Role role = findRole(roleId);
+        protect(role);
         Permission permission = findPermission(permissionId);
         if (role.getPermissions() == null) {
             role.setPermissions(new HashSet<>());
@@ -99,6 +104,7 @@ public class RoleService {
     @Transactional
     public RoleResponse removePermission(String roleId, String permissionId) {
         Role role = findRole(roleId);
+        protect(role);
         findPermission(permissionId);
         if (role.getPermissions() != null) {
             role.getPermissions().removeIf(permission -> permission.getId().equals(permissionId));

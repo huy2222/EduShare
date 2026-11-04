@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { hasPermission, sectionPermissions } from '../services/adminAccess'
+import AdminAccess from '../components/AdminAccess'
+import Catalog from '../components/AdminCatalog'
+import { Modal, Pagination } from '../components/AdminUi'
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, useParams } from 'react-router-dom'
 import { getCurrentUser } from '../services/authApi'
 import {
@@ -6,9 +10,6 @@ import {
   getRoles,
   getUsers,
   updateUser,
-  getCatalog,
-  saveCatalog,
-  deleteCatalog,
 } from '../services/adminApi'
 import brandMark from '../assets/brand-mark.svg'
 import '../styles/admin.css'
@@ -18,6 +19,7 @@ const sections = {
   users: 'Quản lý người dùng',
   faculties: 'Khoa & ngành',
   subjects: 'Quản lý môn học',
+  access: 'Phân quyền & vai trò',
 }
 const roleLabel = (role) =>
   ({
@@ -36,6 +38,12 @@ const number = (value) => (value || 0).toLocaleString('vi-VN')
 
 function Icon({ name }) {
   const paths = {
+    access: (
+      <>
+        <path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Z" />
+        <path d="m8 12 3 3 5-6" />
+      </>
+    ),
     overview: (
       <>
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -82,68 +90,6 @@ function Icon({ name }) {
     >
       {paths[name] || paths.subjects}
     </svg>
-  )
-}
-
-function Modal({ title, children, onClose, busy }) {
-  const ref = useRef(null)
-  useEffect(() => {
-    const previous = document.activeElement
-    const dialog = ref.current
-    dialog.showModal()
-    return () => {
-      dialog.close()
-      previous?.focus()
-    }
-  }, [])
-  return (
-    <dialog
-      ref={ref}
-      className="admin-modal"
-      onCancel={(event) => {
-        event.preventDefault()
-        if (!busy) onClose()
-      }}
-      aria-labelledby="admin-dialog-title"
-    >
-      <header>
-        <h2 id="admin-dialog-title">{title}</h2>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onClose}
-          aria-label="Đóng"
-        >
-          ×
-        </button>
-      </header>
-      {children}
-    </dialog>
-  )
-}
-
-function Pagination({ page, total, onChange, size = 10 }) {
-  const pages = Math.max(1, Math.ceil(total / size))
-  return (
-    <footer className="admin-pagination">
-      <span>
-        {total
-          ? `${page * size + 1}–${Math.min((page + 1) * size, total)}`
-          : '0'}{' '}
-        trên {number(total)} kết quả
-      </span>
-      <div>
-        <button disabled={page === 0} onClick={() => onChange(page - 1)}>
-          Trước
-        </button>
-        <span className="admin-page-number">
-          {page + 1} / {pages}
-        </span>
-        <button disabled={page + 1 >= pages} onClick={() => onChange(page + 1)}>
-          Tiếp
-        </button>
-      </div>
-    </footer>
   )
 }
 
@@ -266,6 +212,10 @@ function Overview() {
 }
 
 function Users({ currentUser }) {
+  const isAdmin = currentUser.roles?.includes('ADMIN')
+  const canAssign =
+    isAdmin || currentUser.permissions?.includes('USER_ROLE_ASSIGN')
+  const canBan = isAdmin || currentUser.permissions?.includes('USER_BAN')
   const [filters, setFilters] = useState({
     search: '',
     role: '',
@@ -499,9 +449,11 @@ function Users({ currentUser }) {
                 {new Date(editing.createdAt).toLocaleDateString('vi-VN')}
               </small>
             </div>
-            <fieldset disabled={busy || editing.id === currentUser.id}>
+            <fieldset
+              disabled={busy || editing.id === currentUser.id || !canAssign}
+            >
               <legend>Phân quyền</legend>
-              {roles.map((role) => (
+              {[...new Set([...roles, ...editing.roles])].map((role) => (
                 <label className="admin-checkbox" key={role}>
                   <input
                     type="checkbox"
@@ -524,6 +476,7 @@ function Users({ currentUser }) {
               <select
                 disabled={
                   busy ||
+                  !canBan ||
                   editing.id === currentUser.id ||
                   editing.status === 'PENDING_VERIFICATION'
                 }
@@ -565,7 +518,10 @@ function Users({ currentUser }) {
               <button
                 className="admin-primary"
                 disabled={
-                  busy || editing.id === currentUser.id || !editing.roles.length
+                  busy ||
+                  editing.id === currentUser.id ||
+                  !editing.roles.length ||
+                  (!canAssign && !canBan)
                 }
               >
                 {busy ? 'Đang lưu…' : 'Lưu thay đổi'}
@@ -578,7 +534,7 @@ function Users({ currentUser }) {
   )
 }
 
-function AcademicManagement() {
+function AcademicManagement({ currentUser }) {
   const [tab, setTab] = useState('faculties')
   const [selectedFaculty, setSelectedFaculty] = useState('')
   return (
@@ -606,6 +562,7 @@ function AcademicManagement() {
       </div>
       <Catalog
         key={tab}
+        currentUser={currentUser}
         type={tab}
         initialFacultyId={selectedFaculty}
         onViewMajors={(id) => {
@@ -613,443 +570,6 @@ function AcademicManagement() {
           setTab('majors')
         }}
       />
-    </>
-  )
-}
-
-function Catalog({ type, initialFacultyId = '', onViewMajors }) {
-  const isSubject = type === 'subjects'
-  const isMajor = type === 'majors'
-  const hasFaculty = isSubject || isMajor
-  const noun = isSubject ? 'môn học' : isMajor ? 'ngành' : 'khoa'
-  const [rows, setRows] = useState([])
-  const [faculties, setFaculties] = useState([])
-  const [query, setQuery] = useState('')
-  const [facultyId, setFacultyId] = useState(initialFacultyId)
-  const [majorId, setMajorId] = useState('')
-  const [page, setPage] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [editing, setEditing] = useState(null)
-  const [deleting, setDeleting] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const [modalError, setModalError] = useState('')
-  const [reload, setReload] = useState(0)
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    Promise.all([
-      getCatalog(type),
-      hasFaculty ? getCatalog('faculties') : Promise.resolve(null),
-    ])
-      .then(([r, f]) => {
-        if (active) {
-          setRows(r.result)
-          setFaculties(f?.result || [])
-          setError('')
-        }
-      })
-      .catch((e) => {
-        if (active) setError(e.message)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [type, hasFaculty, reload])
-  const filtered = rows.filter(
-    (r) =>
-      `${r.code} ${r.name}`
-        .toLocaleLowerCase('vi')
-        .includes(query.toLocaleLowerCase('vi')) &&
-      (!facultyId || r.facultyId === facultyId) &&
-      (!majorId || r.majorIds?.includes(majorId)),
-  )
-  const safePage = Math.min(
-    page,
-    Math.max(0, Math.ceil(filtered.length / 10) - 1),
-  )
-  const save = async (event) => {
-    event.preventDefault()
-    setBusy(true)
-    setModalError('')
-    try {
-      await saveCatalog(type, {
-        ...editing,
-        credits: isSubject ? Number(editing.credits) : null,
-      })
-      setEditing(null)
-      setNotice(`Đã lưu ${noun}.`)
-      setReload((v) => v + 1)
-    } catch (e) {
-      setModalError(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-  const remove = async () => {
-    setBusy(true)
-    setModalError('')
-    try {
-      await deleteCatalog(type, deleting.id)
-      setDeleting(null)
-      setNotice(`Đã xoá ${noun}.`)
-      setReload((v) => v + 1)
-    } catch (e) {
-      setModalError(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <>
-      <div className="admin-toolbar">
-        <label className="admin-search">
-          <Icon name="search" />
-          <input
-            aria-label={`Tìm ${noun}`}
-            placeholder={`Tìm theo mã hoặc tên ${noun}…`}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setPage(0)
-            }}
-          />
-        </label>
-        {hasFaculty && (
-          <select
-            aria-label="Lọc khoa"
-            value={facultyId}
-            onChange={(e) => {
-              setFacultyId(e.target.value)
-              setPage(0)
-            }}
-          >
-            <option value="">Tất cả các khoa</option>
-            {faculties.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        )}
-        {isSubject && (
-          <select
-            aria-label="Lọc ngành sử dụng"
-            value={majorId}
-            onChange={(e) => {
-              setMajorId(e.target.value)
-              setPage(0)
-            }}
-          >
-            <option value="">Tất cả ngành sử dụng</option>
-            {faculties.map((f) => (
-              <optgroup key={f.id} label={f.name}>
-                {f.majors.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        )}
-        <button
-          className="admin-primary"
-          onClick={() => {
-            setEditing({
-              code: '',
-              name: '',
-              description: '',
-              facultyId,
-              credits: 3,
-              majorIds: [],
-            })
-            setModalError('')
-          }}
-        >
-          ＋ Thêm {noun}
-        </button>
-      </div>
-      {notice && (
-        <p role="status" className="admin-success">
-          {notice}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="admin-error">
-          {error}{' '}
-          <button onClick={() => setReload((v) => v + 1)}>Thử lại</button>
-        </p>
-      )}
-      <section className="admin-table-panel">
-        <div className="admin-table-title">
-          <h2>Danh sách {noun}</h2>
-          <span>
-            {number(filtered.length)} {noun}
-          </span>
-        </div>
-        <div className="admin-table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Mã {noun}</th>
-                <th>Tên {noun}</th>
-                {hasFaculty ? (
-                  <>
-                    <th>{isSubject ? 'Khoa phụ trách' : 'Khoa quản lý'}</th>
-                    <th>{isSubject ? 'Tín chỉ' : 'Mô tả'}</th>
-                  </>
-                ) : (
-                  <>
-                    <th>Mô tả</th>
-                    <th>Số ngành</th>
-                  </>
-                )}
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="5" className="admin-empty">
-                    Đang tải danh mục…
-                  </td>
-                </tr>
-              ) : error ? null : filtered.length ? (
-                filtered.slice(safePage * 10, safePage * 10 + 10).map((row) => (
-                  <tr key={row.id}>
-                    <td className="admin-code">{row.code}</td>
-                    <td>
-                      <b>{row.name}</b>
-                    </td>
-                    <td>
-                      {hasFaculty ? row.facultyName : row.description || '—'}
-                    </td>
-                    <td>
-                      {isSubject
-                        ? row.credits
-                        : isMajor
-                          ? row.description || '—'
-                          : row.majors.length}
-                    </td>
-                    <td>
-                      <div className="admin-row-actions">
-                        {!hasFaculty && (
-                          <button onClick={() => onViewMajors(row.id)}>
-                            Xem ngành
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setEditing({
-                              ...row,
-                              description: row.description || '',
-                            })
-                            setModalError('')
-                          }}
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          className="admin-danger-text"
-                          onClick={() => {
-                            setDeleting(row)
-                            setModalError('')
-                          }}
-                        >
-                          Xoá
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="admin-empty">
-                    {query || facultyId
-                      ? 'Không có kết quả phù hợp.'
-                      : `Chưa có ${noun}. Thêm ${noun} đầu tiên để bắt đầu.`}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <Pagination
-          page={safePage}
-          total={filtered.length}
-          onChange={setPage}
-        />
-      </section>
-      {editing && (
-        <Modal
-          title={`${editing.id ? 'Chỉnh sửa' : 'Thêm'} ${noun}`}
-          onClose={() => setEditing(null)}
-          busy={busy}
-        >
-          <form onSubmit={save}>
-            <fieldset disabled={busy} className="admin-form-fields">
-              <label className="admin-field">
-                Mã {noun}
-                <input
-                  required
-                  maxLength="50"
-                  value={editing.code}
-                  onChange={(e) =>
-                    setEditing((v) => ({ ...v, code: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="admin-field">
-                Tên {noun}
-                <input
-                  required
-                  maxLength="200"
-                  value={editing.name}
-                  onChange={(e) =>
-                    setEditing((v) => ({ ...v, name: e.target.value }))
-                  }
-                />
-              </label>
-              {hasFaculty && (
-                <>
-                  <label className="admin-field">
-                    Khoa
-                    <select
-                      required
-                      value={editing.facultyId}
-                      onChange={(e) =>
-                        setEditing((v) => ({
-                          ...v,
-                          facultyId: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value="">Chọn khoa</option>
-                      {faculties.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {isSubject && (
-                    <>
-                      <label className="admin-field">
-                        Số tín chỉ
-                        <input
-                          type="number"
-                          required
-                          min="1"
-                          max="30"
-                          value={editing.credits}
-                          onChange={(e) =>
-                            setEditing((v) => ({
-                              ...v,
-                              credits: e.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                      <fieldset>
-                        <legend>Ngành sử dụng môn học (tuỳ chọn)</legend>
-                        {faculties
-                          .flatMap((f) =>
-                            f.majors.map((m) => ({
-                              ...m,
-                              facultyName: f.name,
-                            })),
-                          )
-                          .map((m) => (
-                            <label className="admin-checkbox" key={m.id}>
-                              <input
-                                type="checkbox"
-                                checked={editing.majorIds.includes(m.id)}
-                                onChange={(e) =>
-                                  setEditing((v) => ({
-                                    ...v,
-                                    majorIds: e.target.checked
-                                      ? [...v.majorIds, m.id]
-                                      : v.majorIds.filter((id) => id !== m.id),
-                                  }))
-                                }
-                              />
-                              {m.name}{' '}
-                              <small className="admin-muted">
-                                ({m.facultyName})
-                              </small>
-                            </label>
-                          ))}
-                        <small className="admin-muted">
-                          Chọn ngành để môn học xuất hiện trong danh mục tải tài
-                          liệu của ngành đó.
-                        </small>
-                      </fieldset>
-                    </>
-                  )}
-                </>
-              )}
-              <label className="admin-field">
-                Mô tả
-                <textarea
-                  rows="3"
-                  maxLength="1000"
-                  value={editing.description}
-                  onChange={(e) =>
-                    setEditing((v) => ({ ...v, description: e.target.value }))
-                  }
-                />
-              </label>
-            </fieldset>
-            {modalError && (
-              <p role="alert" className="admin-error">
-                {modalError}
-              </p>
-            )}
-            <div className="admin-modal-actions">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setEditing(null)}
-              >
-                Huỷ
-              </button>
-              <button className="admin-primary" disabled={busy}>
-                {busy ? 'Đang lưu…' : 'Lưu thay đổi'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
-      {deleting && (
-        <Modal
-          title={`Xoá ${noun}`}
-          busy={busy}
-          onClose={() => setDeleting(null)}
-        >
-          <p>
-            Bạn muốn xoá <strong>{deleting.name}</strong> ({deleting.code})?
-          </p>
-          <p className="admin-muted">Thao tác này không thể hoàn tác.</p>
-          {modalError && (
-            <p role="alert" className="admin-error">
-              {modalError}
-            </p>
-          )}
-          <div className="admin-modal-actions">
-            <button disabled={busy} onClick={() => setDeleting(null)}>
-              Huỷ
-            </button>
-            <button className="admin-danger" disabled={busy} onClick={remove}>
-              {busy ? 'Đang xoá…' : 'Xác nhận xoá'}
-            </button>
-          </div>
-        </Modal>
-      )}
     </>
   )
 }
@@ -1092,14 +612,24 @@ export default function AdminPages({
       </main>
     )
   if (error === 'login') return <Navigate to="/login" replace />
-  if (error || !user?.roles?.includes('ADMIN'))
+  const isAdmin = user?.roles?.includes('ADMIN')
+  const allowed = (key) =>
+    hasPermission(user, ...(sectionPermissions[key] || []))
+  const visible = Object.entries(sections).filter(([key]) => allowed(key))
+  if (error || !visible.length)
     return (
       <main className="admin-access">
         <h1>{error || 'Bạn không có quyền quản trị'}</h1>
         <Link to="/">Về trang chủ</Link>
       </main>
     )
-  if (!sections[section]) return <Navigate to="/admin" replace />
+  if (!sections[section] || !allowed(section))
+    return (
+      <Navigate
+        to={visible[0][0] === 'overview' ? '/admin' : '/admin/' + visible[0][0]}
+        replace
+      />
+    )
   return (
     <div className="admin-app">
       <aside className="admin-sidebar">
@@ -1109,7 +639,7 @@ export default function AdminPages({
         </Link>
         <p className="admin-nav-label">KHÔNG GIAN QUẢN TRỊ</p>
         <nav aria-label="Quản trị">
-          {Object.entries(sections).map(([key, label]) => (
+          {visible.map(([key, label]) => (
             <NavLink
               end={key === 'overview'}
               to={key === 'overview' ? '/admin' : `/admin/${key}`}
@@ -1150,17 +680,24 @@ export default function AdminPages({
                 ? 'Chào mừng trở lại! Cùng theo dõi hệ thống EduShare.'
                 : section === 'users'
                   ? 'Quản lý tài khoản, vai trò và quyền truy cập hệ thống.'
-                  : 'Quản lý danh mục đào tạo và tổ chức tài liệu học tập.'}
+                  : section === 'access'
+                    ? 'Quản lý vai trò, cấu hình quyền và phân quyền người dùng.'
+                    : 'Quản lý danh mục đào tạo và tổ chức tài liệu học tập.'}
             </span>
           </div>
           {section === 'overview' ? (
             <Overview />
           ) : section === 'users' ? (
             <Users currentUser={user} />
+          ) : section === 'access' ? (
+            <AdminAccess
+              currentUser={user}
+              renderUsers={() => <Users currentUser={user} />}
+            />
           ) : section === 'faculties' ? (
-            <AcademicManagement />
+            <AcademicManagement currentUser={user} />
           ) : (
-            <Catalog key={section} type={section} />
+            <Catalog key={section} type={section} currentUser={user} />
           )}
           <footer className="admin-footer">
             EduShare · Không gian quản trị

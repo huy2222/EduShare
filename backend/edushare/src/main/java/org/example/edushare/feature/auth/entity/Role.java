@@ -29,6 +29,13 @@ public class Role {
     @Column(length = 500)
     String description;
 
+    @Column(length = 100)
+    String displayName;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    boolean active = true;
+
     @ManyToMany
     @Builder.Default
     Set<Permission> permissions = new HashSet<>();

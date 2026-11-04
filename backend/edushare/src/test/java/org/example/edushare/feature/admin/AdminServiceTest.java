@@ -24,7 +24,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.*;
 
 @DataJpaTest
-@Import({AdminService.class, CurrentAccountService.class, AdminServiceTest.Security.class})
+@Import({org.example.edushare.feature.admin.service.AdminAuthorization.class, AdminService.class, CurrentAccountService.class, AdminServiceTest.Security.class})
 @WithMockUser(username = "admin", roles = "ADMIN")
 class AdminServiceTest {
     @TestConfiguration

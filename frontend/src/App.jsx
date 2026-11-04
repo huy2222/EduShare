@@ -1,3 +1,4 @@
+import { canEnterAdmin } from './services/adminAccess'
 import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import HomePage from './pages/HomePage'
@@ -5,10 +6,16 @@ import AdminPages from './pages/AdminPages'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import UploadPage from './pages/UploadPage'
-import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordRecoveryPages'
+import {
+  ForgotPasswordPage,
+  ResetPasswordPage,
+} from './pages/PasswordRecoveryPages'
 import { EditProfilePage, ProfilePage } from './pages/ProfilePages'
 import { DownloadHistoryPage, NotificationsPage } from './pages/WorkspacePages'
-import { AccountSettingsPage, FavoriteDocumentsPage } from './pages/SettingsFavoritesPages'
+import {
+  AccountSettingsPage,
+  FavoriteDocumentsPage,
+} from './pages/SettingsFavoritesPages'
 import { getCurrentUser, logout } from './services/authApi'
 
 export default function App() {
@@ -20,10 +27,21 @@ export default function App() {
   useEffect(() => {
     let active = true
     getCurrentUser()
-      .then((response) => { if (active) { setAuthenticated(true); setCurrentUser(response.result) } })
-      .catch(() => { if (active) setAuthenticated(false) })
-      .finally(() => { if (active) setAuthLoading(false) })
-    return () => { active = false }
+      .then((response) => {
+        if (active) {
+          setAuthenticated(true)
+          setCurrentUser(response.result)
+        }
+      })
+      .catch(() => {
+        if (active) setAuthenticated(false)
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
   const handleAuthenticated = async () => {
@@ -31,7 +49,9 @@ export default function App() {
     try {
       const response = await getCurrentUser()
       setCurrentUser(response.result)
-      navigate(response.result?.roles?.includes('ADMIN') ? '/admin' : '/', { replace: true })
+      navigate(canEnterAdmin(response.result) ? '/admin' : '/', {
+        replace: true,
+      })
     } catch {
       navigate('/', { replace: true })
     }
@@ -54,22 +74,67 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/admin" element={<AdminPages currentUser={currentUser} authLoading={authLoading} onLogout={handleLogout} />} />
-      <Route path="/admin/:section" element={<AdminPages currentUser={currentUser} authLoading={authLoading} onLogout={handleLogout} />} />
+      <Route
+        path="/admin"
+        element={
+          <AdminPages
+            currentUser={currentUser}
+            authLoading={authLoading}
+            onLogout={handleLogout}
+          />
+        }
+      />
+      <Route
+        path="/admin/:section"
+        element={
+          <AdminPages
+            currentUser={currentUser}
+            authLoading={authLoading}
+            onLogout={handleLogout}
+          />
+        }
+      />
       <Route path="/" element={<HomePage {...sharedProps} />} />
       <Route path="/explore" element={<HomePage {...sharedProps} />} />
       <Route path="/subjects" element={<HomePage {...sharedProps} />} />
-      <Route path="/login" element={<LoginPage onAuthenticated={handleAuthenticated} />} />
-      <Route path="/register" element={<RegisterPage onAuthenticated={handleAuthenticated} />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage {...sharedProps} />} />
-      <Route path="/reset-password" element={<ResetPasswordPage {...sharedProps} />} />
+      <Route
+        path="/login"
+        element={<LoginPage onAuthenticated={handleAuthenticated} />}
+      />
+      <Route
+        path="/register"
+        element={<RegisterPage onAuthenticated={handleAuthenticated} />}
+      />
+      <Route
+        path="/forgot-password"
+        element={<ForgotPasswordPage {...sharedProps} />}
+      />
+      <Route
+        path="/reset-password"
+        element={<ResetPasswordPage {...sharedProps} />}
+      />
       <Route path="/upload" element={<UploadPage {...sharedProps} />} />
       <Route path="/profile" element={<ProfilePage {...sharedProps} />} />
-      <Route path="/profile/edit" element={<EditProfilePage {...sharedProps} />} />
-      <Route path="/downloads" element={<DownloadHistoryPage {...sharedProps} />} />
-      <Route path="/notifications" element={<NotificationsPage {...sharedProps} />} />
-      <Route path="/settings" element={<AccountSettingsPage {...sharedProps} />} />
-      <Route path="/favorites" element={<FavoriteDocumentsPage {...sharedProps} />} />
+      <Route
+        path="/profile/edit"
+        element={<EditProfilePage {...sharedProps} />}
+      />
+      <Route
+        path="/downloads"
+        element={<DownloadHistoryPage {...sharedProps} />}
+      />
+      <Route
+        path="/notifications"
+        element={<NotificationsPage {...sharedProps} />}
+      />
+      <Route
+        path="/settings"
+        element={<AccountSettingsPage {...sharedProps} />}
+      />
+      <Route
+        path="/favorites"
+        element={<FavoriteDocumentsPage {...sharedProps} />}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

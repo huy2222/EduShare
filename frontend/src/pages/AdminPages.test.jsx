@@ -12,9 +12,15 @@ vi.mock('../services/adminApi', () => ({
   getUsers: vi.fn(),
   updateUser: vi.fn(),
   getCatalog: vi.fn(),
+  getCatalogDetail: vi.fn(),
   saveCatalog: vi.fn(),
   deleteCatalog: vi.fn(),
 }))
+
+const pageResponse = (items) =>
+  Promise.resolve({
+    result: { items, page: 0, size: 10, totalElements: items.length },
+  })
 
 function open(path) {
   return render(
@@ -40,6 +46,93 @@ beforeEach(() => {
 })
 
 describe('Admin workspace', () => {
+  it('requests only the current page and does not load form options before editing', async () => {
+    api.getCatalog.mockImplementation((type, filters) =>
+      Promise.resolve({
+        result: {
+          items: [
+            {
+              id: `s${filters.page}`,
+              code: `S${filters.page}`,
+              name: `Môn trang ${filters.page}`,
+              credits: 3,
+              facultyName: 'Khoa Toán',
+            },
+          ],
+          totalElements: 11,
+          page: filters.page,
+          size: 10,
+        },
+      }),
+    )
+    open('/admin/subjects')
+    expect(await screen.findByText('Môn trang 0')).toBeInTheDocument()
+    expect(api.getCatalog).not.toHaveBeenCalledWith(
+      'faculties',
+      expect.anything(),
+    )
+    expect(api.getCatalogDetail).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Tiếp' }))
+    expect(await screen.findByText('Môn trang 1')).toBeInTheDocument()
+    expect(api.getCatalog).toHaveBeenCalledWith(
+      'subjects',
+      expect.objectContaining({ page: 1, size: 10 }),
+    )
+    fireEvent.change(screen.getByLabelText('Tìm môn học'), {
+      target: { value: 'Toán' },
+    })
+    await waitFor(() =>
+      expect(api.getCatalog).toHaveBeenCalledWith(
+        'subjects',
+        expect.objectContaining({ search: 'Toán', page: 0 }),
+      ),
+    )
+  })
+
+  it('loads subject detail only when editing and preserves previously selected majors', async () => {
+    api.getCatalog.mockImplementation((type) =>
+      pageResponse(
+        type === 'subjects'
+          ? [
+              {
+                id: 's1',
+                code: 'S1',
+                name: 'Toán',
+                credits: 3,
+                facultyId: 'f1',
+                facultyName: 'Khoa Toán',
+              },
+            ]
+          : [],
+      ),
+    )
+    api.getCatalogDetail.mockResolvedValue({
+      result: {
+        id: 's1',
+        code: 'S1',
+        name: 'Toán',
+        credits: 3,
+        facultyId: 'f1',
+        facultyName: 'Khoa Toán',
+        description: 'Chi tiết',
+        majors: [{ id: 'm1', name: 'Ngành đã chọn', facultyName: 'Khoa khác' }],
+      },
+    })
+    api.saveCatalog.mockResolvedValue({})
+    open('/admin/subjects')
+    fireEvent.click(await screen.findByRole('button', { name: 'Sửa' }))
+    expect(
+      await screen.findByRole('checkbox', { name: /Ngành đã chọn/ }),
+    ).toBeChecked()
+    expect(api.getCatalogDetail).toHaveBeenCalledWith('subjects', 's1')
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+    await waitFor(() =>
+      expect(api.saveCatalog).toHaveBeenCalledWith(
+        'subjects',
+        expect.objectContaining({ majorIds: ['m1'] }),
+      ),
+    )
+  })
   it('reuses the account loaded by App without another authentication request', async () => {
     api.getOverview.mockResolvedValue({
       result: { users: 0, activeUsers: 0, lockedUsers: 0 },
@@ -65,19 +158,26 @@ describe('Admin workspace', () => {
 
   it('opens the selected faculty and creates a major inside it', async () => {
     api.getCatalog.mockImplementation((type) =>
-      Promise.resolve({
-        result:
-          type === 'faculties'
+      pageResponse(
+        type === 'faculties'
+          ? [
+              {
+                id: 'f1',
+                code: 'IT',
+                name: 'Công nghệ thông tin',
+                majors: [],
+              },
+            ]
+          : type === 'majors'
             ? [
                 {
-                  id: 'f1',
-                  code: 'IT',
-                  name: 'Công nghệ thông tin',
-                  majors: [],
+                  id: 'm2',
+                  name: 'Kỹ thuật phần mềm',
+                  facultyName: 'Khoa CNTT',
                 },
               ]
             : [],
-      }),
+      ),
     )
     api.saveCatalog.mockResolvedValue({})
     open('/admin/faculties')
@@ -104,19 +204,26 @@ describe('Admin workspace', () => {
 
   it('keeps cross-faculty major selections when the managing faculty changes', async () => {
     api.getCatalog.mockImplementation((type) =>
-      Promise.resolve({
-        result:
-          type === 'faculties'
+      pageResponse(
+        type === 'faculties'
+          ? [
+              { id: 'f1', name: 'Khoa Toán', majors: [] },
+              {
+                id: 'f2',
+                name: 'Khoa CNTT',
+                majors: [{ id: 'm2', name: 'Kỹ thuật phần mềm' }],
+              },
+            ]
+          : type === 'majors'
             ? [
-                { id: 'f1', name: 'Khoa Toán', majors: [] },
                 {
-                  id: 'f2',
-                  name: 'Khoa CNTT',
-                  majors: [{ id: 'm2', name: 'Kỹ thuật phần mềm' }],
+                  id: 'm2',
+                  name: 'Kỹ thuật phần mềm',
+                  facultyName: 'Khoa CNTT',
                 },
               ]
             : [],
-      }),
+      ),
     )
     api.saveCatalog.mockResolvedValue({})
     open('/admin/subjects')
@@ -132,7 +239,12 @@ describe('Admin workspace', () => {
     fireEvent.click(
       await screen.findByRole('checkbox', { name: /Kỹ thuật phần mềm/ }),
     )
-    fireEvent.change(screen.getByLabelText('Khoa', { exact: true }), {
+    await waitFor(() =>
+      expect(
+        screen.getByRole('option', { name: /Công nghệ thông tin|Khoa Toán/ }),
+      ).toBeInTheDocument(),
+    )
+    fireEvent.change(await screen.findByLabelText('Khoa', { exact: true }), {
       target: { value: 'f1' },
     })
     expect(
@@ -158,12 +270,19 @@ describe('Admin workspace', () => {
 
   it('creates a subject with its selected faculty', async () => {
     api.getCatalog.mockImplementation((type) =>
-      Promise.resolve({
-        result:
-          type === 'faculties'
-            ? [{ id: 'f1', name: 'Công nghệ thông tin', majors: [] }]
+      pageResponse(
+        type === 'faculties'
+          ? [{ id: 'f1', name: 'Công nghệ thông tin', majors: [] }]
+          : type === 'majors'
+            ? [
+                {
+                  id: 'm2',
+                  name: 'Kỹ thuật phần mềm',
+                  facultyName: 'Khoa CNTT',
+                },
+              ]
             : [],
-      }),
+      ),
     )
     api.saveCatalog.mockResolvedValue({})
     open('/admin/subjects')
@@ -176,6 +295,7 @@ describe('Admin workspace', () => {
     fireEvent.change(screen.getByLabelText('Tên môn học'), {
       target: { value: 'Lập trình' },
     })
+    await screen.findByRole('option', { name: 'Công nghệ thông tin' })
     fireEvent.change(screen.getByLabelText('Khoa', { exact: true }), {
       target: { value: 'f1' },
     })
@@ -224,11 +344,11 @@ describe('Admin workspace', () => {
   })
 
   it('shows delete conflicts and keeps the confirmation open', async () => {
-    api.getCatalog.mockResolvedValue({
-      result: [
+    api.getCatalog.mockResolvedValue(
+      pageResponse([
         { id: 'f1', code: 'IT', name: 'Công nghệ thông tin', majors: [] },
-      ],
-    })
+      ]),
+    )
     api.deleteCatalog.mockRejectedValue(new Error('Khoa còn môn học.'))
     open('/admin/faculties')
     fireEvent.click(

@@ -30,6 +30,7 @@ public class CurrentAccountService {
         if (user.getStatus() != UserStatus.ACTIVE) throw new BadJwtException("Account is disabled");
         StringJoiner scope = new StringJoiner(" ");
         user.getRoles().forEach(role -> {
+            if (!role.isActive()) return;
             scope.add("ROLE_" + role.getName());
             role.getPermissions().forEach(permission -> scope.add(permission.getName()));
         });

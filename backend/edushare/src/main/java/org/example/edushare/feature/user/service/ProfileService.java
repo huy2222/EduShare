@@ -24,11 +24,13 @@ public class ProfileService {
     private final MajorRepository majorRepository;
 
     @Transactional(readOnly = true)
+    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('PROFILE_VIEW_OWN')")
     public ProfileResponse getMyProfile() {
         return toResponse(getAuthenticatedUser());
     }
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('PROFILE_UPDATE_OWN')")
     public ProfileResponse updateMyProfile(ProfileUpdateRequest request) {
         User user = getAuthenticatedUser();
         Profile profile = user.getProfile();

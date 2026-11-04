@@ -56,6 +56,7 @@ public class PermissionService {
     @Transactional
     public PermissionResponse update(String id, PermissionRequest request) {
         Permission permission = findById(id);
+        protectManaged(permission);
         String name = normalizeName(request.name());
         if (permissionRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new AppException(ErrorCode.PERMISSION_EXISTED);
@@ -73,10 +74,17 @@ public class PermissionService {
     @Transactional
     public void delete(String id) {
         Permission permission = findById(id);
+        protectManaged(permission);
         roleRepository.findAllByPermissions_Id(id)
                 .forEach(role -> role.getPermissions()
                         .removeIf(item -> item.getId().equals(id)));
         permissionRepository.delete(permission);
+    }
+
+    private void protectManaged(Permission permission) {
+        if (org.example.edushare.feature.admin.service.PermissionCatalog.ITEMS.stream().anyMatch(p -> p.code().equals(permission.getName())))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Quyền hệ thống có mã cố định. Hãy cấu hình quyền trên vai trò.");
     }
 
     private Permission findById(String id) {

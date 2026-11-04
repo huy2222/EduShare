@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 @PreAuthorize("hasRole('ADMIN')")
@@ -32,26 +33,49 @@ public class AdminService {
     private final MajorRepository majors;
     private final DocumentRepository documents;
 
-    public Map<String, Long> overview() {
+    private Map<String, Long> overviewCache;
+    private long overviewExpiresAt;
+
+    private void invalidateOverviewAfterCommit() {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override public void afterCommit() { clearOverview(); }
+                });
+        } else clearOverview();
+    }
+
+    private synchronized void clearOverview() { overviewCache = null; }
+
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('OVERVIEW_VIEW')")
+    public synchronized Map<String, Long> overview() {
+        if (overviewCache != null && System.nanoTime() < overviewExpiresAt) return overviewCache;
         var counts = users.countStatuses().stream().collect(Collectors.toMap(UserRepository.StatusCount::getStatus, UserRepository.StatusCount::getTotal));
-        return Map.of("users", counts.values().stream().mapToLong(Long::longValue).sum(), "activeUsers", counts.getOrDefault(UserStatus.ACTIVE, 0L),
+        overviewCache = Map.of("users", counts.values().stream().mapToLong(Long::longValue).sum(), "activeUsers", counts.getOrDefault(UserStatus.ACTIVE, 0L),
                 "lockedUsers", counts.getOrDefault(UserStatus.BANNED, 0L) + counts.getOrDefault(UserStatus.INACTIVE, 0L),
                 "faculties", faculties.count(), "subjects", subjects.count(), "documents", documents.count());
+        overviewExpiresAt = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
+        return overviewCache;
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('USER_VIEW')")
     public Page<UserResponse> users(String search, String role, UserStatus status, int page) {
-        var result = users.searchAdmin(search.trim().toLowerCase(Locale.ROOT), role, status,
+        var result = users.searchAdminRows(search.trim().toLowerCase(Locale.ROOT), role, status,
                 PageRequest.of(Math.max(0, page), 10, Sort.by("createdAt").descending().and(Sort.by("id"))));
-        if (result.isEmpty()) return result.map(this::userResponse);
-        var details = users.findAdminDetails(result.getContent().stream().map(User::getId).toList()).stream()
-                .collect(Collectors.toMap(User::getId, this::userResponse));
-        return result.map(user -> details.get(user.getId()));
+        if (result.isEmpty()) return result.map(row -> (UserResponse) null);
+        var userRoles = users.findAdminRoles(result.getContent().stream().map(AdminUserRow::id).toList()).stream()
+                .collect(Collectors.groupingBy(AdminUserRole::userId, Collectors.mapping(AdminUserRole::role, Collectors.toSet())));
+        return result.map(row -> UserResponse.builder().id(row.id()).email(row.email()).fullName(row.fullName())
+                .status(row.status()).createdAt(row.createdAt()).roles(userRoles.getOrDefault(row.id(), Set.of())).build());
     }
 
-    public List<String> roles() { return roles.findAll().stream().map(Role::getName).sorted().toList(); }
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('USER_VIEW')")
+    public List<String> roles() { return roles.findActiveRoleNames(); }
 
     @Transactional
+    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('USER_ROLE_ASSIGN', 'USER_BAN')")
     public UserResponse updateUser(String id, UserAccessRequest request) {
+        invalidateOverviewAfterCommit();
         User user = users.findByIdForUpdate(id).orElseThrow(() -> missing("Người dùng"));
         if (user.getEmail().equals(SecurityContextHolder.getContext().getAuthentication().getName())) {
             throw conflict("Không thể thay đổi quyền hoặc khoá tài khoản đang sử dụng.");
@@ -62,8 +86,22 @@ public class AdminService {
         }
         Set<Role> selected = request.roles().stream().map(name -> roles.findByName(name)
                 .orElseThrow(() -> conflict("Vai trò không hợp lệ."))).collect(Collectors.toSet());
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        var granted = auth.getAuthorities().stream().map(a -> a.getAuthority()).collect(Collectors.toSet());
+        boolean admin = granted.contains("ROLE_ADMIN");
+        var existing = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
+        if (!existing.equals(request.roles()) && !admin && !granted.contains("USER_ROLE_ASSIGN"))
+            throw new org.springframework.security.access.AccessDeniedException("Thiếu quyền gán vai trò");
+        if (request.status() != user.getStatus() && !admin && !granted.contains("USER_BAN"))
+            throw new org.springframework.security.access.AccessDeniedException("Thiếu quyền khoá tài khoản");
+        if (!admin && (existing.contains("ADMIN") || request.roles().contains("ADMIN")))
+            throw new org.springframework.security.access.AccessDeniedException("Chỉ ADMIN được thay đổi tài khoản quản trị");
+        if (selected.stream().anyMatch(r -> !r.isActive() && !existing.contains(r.getName())))
+            throw conflict("Không thể gán vai trò đã ngừng hoạt động.");
         user.setRoles(selected);
         user.setStatus(request.status());
+        log.info("Authorization change: action=ASSIGN_USER_ACCESS, actor={}, userId={}, roles={}, status={}",
+                auth.getName(), user.getId(), request.roles(), request.status());
         return userResponse(user);
     }
 
@@ -74,32 +112,10 @@ public class AdminService {
                 .status(user.getStatus()).createdAt(user.getCreatedAt()).build();
     }
 
-    public List<Map<String, Object>> faculties() {
-        return faculties.findAdminCatalog().stream().map(f -> {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", f.getId()); row.put("code", f.getCode()); row.put("name", f.getName());
-            row.put("description", f.getDescription());
-            row.put("majors", f.getMajors().stream().map(m -> Map.of("id", m.getId(), "name", m.getName())).toList());
-            return row;
-        }).toList();
-    }
-
-    public List<Map<String, Object>> subjects() {
-        return subjects.findAdminCatalog().stream().map(s -> {
-            Map<String, Object> row = new LinkedHashMap<>();
-            Faculty faculty = s.getFaculty();
-            if (faculty == null && !s.getMajors().isEmpty()) faculty = s.getMajors().iterator().next().getFaculty();
-            row.put("id", s.getId()); row.put("code", s.getCode()); row.put("name", s.getName());
-            row.put("description", s.getDescription()); row.put("credits", s.getCredits());
-            row.put("facultyId", faculty == null ? "" : faculty.getId());
-            row.put("facultyName", faculty == null ? "Chưa phân khoa" : faculty.getName());
-            row.put("majorIds", s.getMajors().stream().map(Major::getId).toList());
-            return row;
-        }).toList();
-    }
-
     @Transactional
+    @PreAuthorize("@adminAuthorization.has('CATALOG_MANAGE', #id == null ? 'FACULTY_CREATE' : 'FACULTY_UPDATE')")
     public void saveFaculty(String id, CatalogRequest request) {
+        invalidateOverviewAfterCommit();
         String code = request.code().trim().toUpperCase(Locale.ROOT);
         faculties.findByCode(code).filter(f -> !f.getId().equals(id)).ifPresent(f -> { throw conflict("Mã khoa đã tồn tại."); });
         Faculty faculty = id == null ? new Faculty() : faculties.findById(id).orElseThrow(() -> missing("Khoa"));
@@ -108,7 +124,9 @@ public class AdminService {
     }
 
     @Transactional
+    @PreAuthorize("@adminAuthorization.has('CATALOG_MANAGE', 'FACULTY_DELETE')")
     public void deleteFaculty(String id) {
+        invalidateOverviewAfterCommit();
         Faculty faculty = faculties.findById(id).orElseThrow(() -> missing("Khoa"));
         if (!faculty.getMajors().isEmpty() || subjects.existsByFacultyId(id)) {
             throw conflict("Khoa còn ngành hoặc môn học. Hãy chuyển hoặc xoá các dữ liệu liên quan trước.");
@@ -118,7 +136,9 @@ public class AdminService {
     }
 
     @Transactional
+    @PreAuthorize("@adminAuthorization.has('CATALOG_MANAGE', #id == null ? 'SUBJECT_CREATE' : 'SUBJECT_UPDATE')")
     public void saveSubject(String id, CatalogRequest request) {
+        invalidateOverviewAfterCommit();
         if (request.facultyId() == null || request.credits() == null) throw conflict("Vui lòng chọn khoa và số tín chỉ.");
         Faculty faculty = faculties.findById(request.facultyId()).orElseThrow(() -> missing("Khoa"));
         String code = request.code().trim().toUpperCase(Locale.ROOT);
@@ -138,7 +158,9 @@ public class AdminService {
     }
 
     @Transactional
+    @PreAuthorize("@adminAuthorization.has('CATALOG_MANAGE', 'SUBJECT_DELETE')")
     public void deleteSubject(String id) {
+        invalidateOverviewAfterCommit();
         Subject subject = subjects.findById(id).orElseThrow(() -> missing("Môn học"));
         if (documents.existsBySubjectId(id)) throw conflict("Môn học đã có tài liệu, không thể xoá.");
         for (Major major : new HashSet<>(subject.getMajors())) major.getSubjects().remove(subject);
@@ -147,21 +169,10 @@ public class AdminService {
         subjects.flush();
     }
 
-    public List<Map<String, Object>> majors() {
-        return majors.findAdminCatalog().stream().map(m -> {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", m.getId());
-            row.put("code", m.getCode());
-            row.put("name", m.getName());
-            row.put("description", m.getDescription());
-            row.put("facultyId", m.getFaculty().getId());
-            row.put("facultyName", m.getFaculty().getName());
-            return row;
-        }).toList();
-    }
-
     @Transactional
+    @PreAuthorize("@adminAuthorization.has('CATALOG_MANAGE', #id == null ? 'MAJOR_CREATE' : 'MAJOR_UPDATE')")
     public void saveMajor(String id, CatalogRequest request) {
+        invalidateOverviewAfterCommit();
         if (request.facultyId() == null) throw conflict("Vui lòng chọn khoa quản lý ngành.");
         Faculty faculty = faculties.findById(request.facultyId()).orElseThrow(() -> missing("Khoa"));
         String code = request.code().trim().toUpperCase(Locale.ROOT);
@@ -175,7 +186,9 @@ public class AdminService {
     }
 
     @Transactional
+    @PreAuthorize("@adminAuthorization.has('CATALOG_MANAGE', 'MAJOR_DELETE')")
     public void deleteMajor(String id) {
+        invalidateOverviewAfterCommit();
         Major major = majors.findById(id).orElseThrow(() -> missing("Ngành"));
         if (!major.getSubjects().isEmpty() || users.existsByProfileMajorId(id)) {
             throw conflict("Ngành còn môn học hoặc người dùng. Hãy chuyển dữ liệu liên quan trước khi xoá.");

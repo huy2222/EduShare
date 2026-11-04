@@ -8,8 +8,6 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface SubjectRepository extends JpaRepository<Subject, String> {
-    @Query("select distinct s from Subject s left join fetch s.faculty left join fetch s.majors m left join fetch m.faculty order by s.code")
-    java.util.List<Subject> findAdminCatalog();
     boolean existsByFacultyId(String facultyId);
 
     Optional<Subject> findByCode(String code);
