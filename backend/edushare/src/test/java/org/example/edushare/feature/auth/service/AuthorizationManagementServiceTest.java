@@ -102,15 +102,16 @@ class AuthorizationManagementServiceTest {
     }
 
     @Test
-    void deleteRoleDetachesItFromUsers() {
+    void cannotDeleteRoleThatIsAssignedToUsers() {
         Role role = Role.builder().id("role-id").name("MODERATOR").build();
         User user = User.builder().id("user-id").roles(new HashSet<>(Set.of(role))).build();
         when(roleRepository.findById("role-id")).thenReturn(Optional.of(role));
-        when(userRepository.findAllByRoles_Id("role-id")).thenReturn(List.of(user));
+        when(userRepository.existsByRoles_Id("role-id")).thenReturn(true);
 
-        roleService.delete("role-id");
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> roleService.delete("role-id"));
 
-        assertTrue(user.getRoles().isEmpty());
-        verify(roleRepository).delete(role);
+        assertTrue(user.getRoles().contains(role));
+        org.mockito.Mockito.verify(roleRepository, org.mockito.Mockito.never()).delete(role);
     }
 }

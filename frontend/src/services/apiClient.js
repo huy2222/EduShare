@@ -106,3 +106,10 @@ export function apiPostForm(path, formData) {
 export function clearCsrfToken() {
   csrf = null
 }
+
+export function apiDelete(path) {
+  return requestWithCsrf(path, (csrfToken) => ({
+    method: 'DELETE', credentials: 'include',
+    headers: { [csrfToken.headerName]: csrfToken.token },
+  }))
+}

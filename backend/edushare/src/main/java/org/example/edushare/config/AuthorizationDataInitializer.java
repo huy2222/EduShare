@@ -15,6 +15,7 @@ import org.springframework.util.StringUtils;
 import java.util.HashSet;
 import java.util.Locale;
 
+@org.springframework.core.annotation.Order(0)
 @Component
 @RequiredArgsConstructor
 @Slf4j

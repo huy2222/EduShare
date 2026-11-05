@@ -110,6 +110,7 @@ public class JwtService {
         StringJoiner scopes = new StringJoiner(" ");
         if (!CollectionUtils.isEmpty(user.getRoles())) {
             user.getRoles().forEach(role -> {
+                if (!role.isActive()) return;
                 scopes.add("ROLE_" + role.getName());
                 if (!CollectionUtils.isEmpty(role.getPermissions())) {
                     role.getPermissions().forEach(permission -> scopes.add(permission.getName()));

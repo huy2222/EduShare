@@ -46,7 +46,7 @@ public class UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         Set<String> roles = user.getRoles() == null
                 ? Set.of()
-                : user.getRoles().stream().map(Role::getName).collect(Collectors.toUnmodifiableSet());
+                : user.getRoles().stream().filter(Role::isActive).map(Role::getName).collect(Collectors.toUnmodifiableSet());
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -54,6 +54,8 @@ public class UserService {
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt())
                 .roles(roles)
+                .permissions(authentication.getAuthorities().stream().map(a -> a.getAuthority())
+                        .filter(a -> !a.startsWith("ROLE_")).collect(Collectors.toSet()))
                 .build();
     }
 

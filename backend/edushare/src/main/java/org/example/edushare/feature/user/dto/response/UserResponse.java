@@ -19,5 +19,6 @@ public class UserResponse {
     UserStatus status;
     LocalDateTime createdAt;
     Set<String> roles;
+    Set<String> permissions;
 }
 

@@ -16,7 +16,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
 public class LoginRequest {
         @NotBlank(message = "Email is required")
-        @Email(message = "Email must be valid")
+        @jakarta.validation.constraints.Pattern(regexp = "(?i)(admin|[^\\s@]+@[^\\s@]+\\.[^\\s@]+)", message = "Email hoặc tài khoản không hợp lệ")
         @Size(max = 320, message = "Email must not exceed 320 characters")
         String email;
 
