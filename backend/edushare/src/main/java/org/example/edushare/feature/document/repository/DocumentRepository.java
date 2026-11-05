@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
+    boolean existsBySubjectId(String subjectId);
 
     Page<Document> findAllByStatus(DocumentStatus status, Pageable pageable);
 

@@ -14,6 +14,18 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    ResponseEntity<ApiResponse<Void>> handlingStatus(org.springframework.web.server.ResponseStatusException exception) {
+        return ResponseEntity.status(exception.getStatusCode()).body(ApiResponse.<Void>builder()
+                .code(ErrorCode.INVALID_REQUEST.getCode()).message(exception.getReason()).build());
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ResponseEntity<ApiResponse<Void>> handlingConflict(org.springframework.dao.DataIntegrityViolationException exception) {
+        return ResponseEntity.status(409).body(ApiResponse.<Void>builder()
+                .code(ErrorCode.INVALID_REQUEST.getCode())
+                .message("Dữ liệu bị trùng hoặc đang được sử dụng. Vui lòng tải lại và kiểm tra.").build());
+    }
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse<Void>> handlingException(Exception exception) {
         log.error("Unhandled exception", exception);

@@ -5,7 +5,6 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import org.example.edushare.common.exception.AppException;
 import org.example.edushare.feature.auth.service.JwtService;
-import org.example.edushare.feature.auth.service.TokenRevocationService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -30,19 +29,17 @@ public class CustomJwtDecoder implements JwtDecoder {
     private String signerKey;
 
     JwtService jwtService;
-    TokenRevocationService tokenRevocationService;
+    org.example.edushare.feature.auth.service.CurrentAccountService currentAccountService;
 
     @NonFinal
     private volatile NimbusJwtDecoder nimbusJwtDecoder = null;
 
     @Override
     public Jwt decode(String token) throws JwtException {
-
+        String tokenId;
         try {
             JwtService.VerifiedToken verifiedToken = jwtService.verifyAndRead(token);
-            if (tokenRevocationService.isTokenRevoked(verifiedToken.id())) {
-                throw new BadJwtException("Access token has been revoked");
-            }
+            tokenId = verifiedToken.id();
         } catch (AppException e) {
             throw new BadJwtException("Invalid access token", e);
         }
@@ -58,6 +55,9 @@ public class CustomJwtDecoder implements JwtDecoder {
                 }
             }
         }
-        return nimbusJwtDecoder.decode(token);
+        Jwt jwt = nimbusJwtDecoder.decode(token);
+        return Jwt.withTokenValue(jwt.getTokenValue()).headers(h -> h.putAll(jwt.getHeaders()))
+                .claims(c -> c.putAll(jwt.getClaims()))
+                .claim("scope", currentAccountService.scope(jwt.getSubject(), tokenId)).build();
     }
 }

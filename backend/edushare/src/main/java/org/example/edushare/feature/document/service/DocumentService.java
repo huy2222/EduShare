@@ -45,6 +45,7 @@ public class DocumentService {
     private final SubjectRepository subjectRepository;
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('DOCUMENT_UPLOAD')")
     public Document create(@Valid DocumentCreateRequest request, MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new AppException(ErrorCode.DOCUMENT_FILE_EMPTY);
@@ -83,21 +84,25 @@ public class DocumentService {
     }
 
     @Transactional(readOnly = true)
+    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('DOCUMENT_VIEW')")
     public Document getById(UUID documentId) {
         return findDocument(documentId);
     }
 
     @Transactional(readOnly = true)
+    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('DOCUMENT_VIEW')")
     public Page<Document> getApproved(Pageable pageable) {
         return documentRepository.findAllByStatus(DocumentStatus.APPROVED, pageable);
     }
 
     @Transactional(readOnly = true)
+    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('DOCUMENT_VIEW')")
     public List<Document> getCurrentUserDocuments() {
         return documentRepository.findAllByUploaderIdOrderByCreatedAtDesc(getCurrentUser().getId());
     }
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('DOCUMENT_VIEW')")
     public void incrementViewCount(UUID documentId) {
         if (documentRepository.incrementViewCount(documentId) == 0) {
             throw new AppException(ErrorCode.DOCUMENT_NOT_FOUND);
@@ -124,9 +129,11 @@ public class DocumentService {
         User currentUser = getCurrentUser();
         boolean owner = document.getUploader().getId().equals(currentUser.getId());
         boolean administrator = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+                .anyMatch(authority -> ("ROLE_ADMIN".equals(authority.getAuthority()) || "DOCUMENT_DELETE_ANY".equals(authority.getAuthority())));
 
-        if (!owner && !administrator) {
+        boolean canDeleteOwn = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> "DOCUMENT_DELETE_OWN".equals(a.getAuthority()));
+        if (!administrator && (!owner || !canDeleteOwn)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 

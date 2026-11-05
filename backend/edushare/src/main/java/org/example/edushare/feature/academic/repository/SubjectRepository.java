@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface SubjectRepository extends JpaRepository<Subject, String> {
+    boolean existsByFacultyId(String facultyId);
 
     Optional<Subject> findByCode(String code);
 

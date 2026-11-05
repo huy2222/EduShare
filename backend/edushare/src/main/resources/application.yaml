@@ -4,14 +4,10 @@ server:
         context-path: /edushare
 spring:
   datasource:
-    #    url:  ${DB_URL:jdbc:mysql://localhost:3307/edushare}
-    #    driver-class-name: com.mysql.cj.jdbc.Driver
-    #    username: ${DB_USERNAME:root}
-    #    password: ${DB_PASSWORD:root}
-    url: jdbc:mysql://localhost:3307/edushare
+    url: "${DB_URL:jdbc:mysql://edushare-nguyennhathuy21112005-d73f.f.aivencloud.com:11983/defaultdb?sslMode=REQUIRED}"
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: "root"
-    password: "root"
+    username: ${DB_USERNAME:avnadmin}
+    password: ${DB_PASSWORD}
   jpa:
     open-in-view: false
     hibernate:

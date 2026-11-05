@@ -34,7 +34,7 @@ public class DocumentModerationService {
     private final UserRepository userRepository;
 
     @Transactional
-    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR') or hasAuthority('APPROVE_DOCUMENT')")
+    @PreAuthorize("@adminAuthorization.documentAction(#request.action)")
     public DocumentModeration moderate(UUID documentId, @Valid DocumentModerationRequest request) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new AppException(ErrorCode.DOCUMENT_NOT_FOUND));
@@ -57,6 +57,7 @@ public class DocumentModerationService {
     }
 
     @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_VIEW', 'APPROVE_DOCUMENT', 'DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'DOCUMENT_HIDE')")
     public List<DocumentModeration> getHistory(UUID documentId) {
         if (!documentRepository.existsById(documentId)) {
             throw new AppException(ErrorCode.DOCUMENT_NOT_FOUND);
