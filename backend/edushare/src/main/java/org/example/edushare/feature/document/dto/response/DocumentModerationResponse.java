@@ -29,6 +29,7 @@ public class DocumentModerationResponse {
     String subjectCode;
     String subjectName;
     String facultyName;
+    String majorName;
     String semester;
     String academicYear;
 
@@ -57,6 +58,9 @@ public class DocumentModerationResponse {
                 .subjectName(subject == null ? null : subject.getName())
                 .facultyName(subject == null || subject.getFaculty() == null
                         ? null : subject.getFaculty().getName())
+                .majorName(uploader == null || uploader.getProfile() == null
+                        || uploader.getProfile().getMajor() == null
+                        ? null : uploader.getProfile().getMajor().getName())
                 .semester(document.getSemester() == null ? null : document.getSemester().name())
                 .academicYear(document.getAcademicYear())
                 .build();

@@ -21,11 +21,16 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
     Page<Document> findAllByStatus(DocumentStatus status, Pageable pageable);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {
+            "uploader", "uploader.profile", "uploader.profile.major", "subject", "subject.faculty"
+    })
     Page<Document> findAllByStatusAndScanStatus(
             DocumentStatus status, org.example.edushare.feature.document.entity.ScanStatus scanStatus,
             Pageable pageable);
 
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"uploader", "uploader.profile", "subject", "subject.faculty"})
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {
+            "uploader", "uploader.profile", "uploader.profile.major", "subject", "subject.faculty"
+    })
     Optional<Document> findDetailedById(UUID id);
 
     List<Document> findAllByUploaderIdOrderByCreatedAtDesc(String uploaderId);
