@@ -11,6 +11,7 @@ import org.example.edushare.feature.document.dto.request.DocumentCreateRequest;
 import org.example.edushare.feature.document.entity.Document;
 import org.example.edushare.feature.document.entity.DocumentType;
 import org.example.edushare.feature.document.entity.FileType;
+import org.example.edushare.feature.document.entity.PreviewStatus;
 import org.example.edushare.feature.document.entity.Semester;
 import org.example.edushare.feature.document.repository.DocumentRepository;
 import org.example.edushare.feature.user.entity.User;
@@ -101,18 +102,43 @@ class DocumentServiceTest {
                 .thenReturn(Optional.of(major));
         when(subjectRepository.findByIdAndMajorId("subject-id", "major-id"))
                 .thenReturn(Optional.of(subject));
-        when(storageService.upload(file)).thenReturn("documents/generated.pdf");
+        when(storageService.uploadToQuarantine(file)).thenReturn("quarantine/generated.pdf");
         when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Document result = documentService.create(request, file);
 
         assertEquals("Lecture 1", result.getTitle());
-        assertEquals("documents/generated.pdf", result.getFileUrl());
+        assertEquals("quarantine/generated.pdf", result.getFileUrl());
         assertEquals("lecture.PDF", result.getFileName());
         assertEquals(FileType.PDF, result.getFileType());
+        assertEquals(PreviewStatus.NOT_REQUIRED, result.getPreviewStatus());
+        assertEquals(org.example.edushare.feature.document.entity.ScanStatus.PENDING, result.getScanStatus());
         assertEquals(DocumentType.LECTURE_NOTE, result.getDocumentType());
         assertEquals(uploader, result.getUploader());
         assertEquals(subject, result.getSubject());
+    }
+
+    @Test
+    void createQueuesCleanWordDocumentForPdfPreview() throws IOException {
+        User uploader = User.builder().id("user-id").email("student@example.com").build();
+        Major major = Major.builder().id("major-id").build();
+        Subject subject = Subject.builder().id("subject-id").code("INT1301").name("Data Structures").credits(3).build();
+        MockMultipartFile file = new MockMultipartFile("file", "lecture.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content".getBytes());
+        DocumentCreateRequest request = DocumentCreateRequest.builder()
+                .title("Lecture 1").documentType(DocumentType.LECTURE_NOTE)
+                .facultyId("faculty-id").majorId("major-id").subjectId("subject-id").build();
+
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(uploader));
+        when(facultyRepository.existsById("faculty-id")).thenReturn(true);
+        when(majorRepository.findByIdAndFacultyId("major-id", "faculty-id")).thenReturn(Optional.of(major));
+        when(subjectRepository.findByIdAndMajorId("subject-id", "major-id")).thenReturn(Optional.of(subject));
+        when(storageService.uploadToQuarantine(file)).thenReturn("quarantine/generated.docx");
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Document result = documentService.create(request, file);
+
+        assertEquals(PreviewStatus.PENDING, result.getPreviewStatus());
     }
 
     @Test

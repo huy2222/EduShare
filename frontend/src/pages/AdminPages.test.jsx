@@ -15,6 +15,10 @@ vi.mock('../services/adminApi', () => ({
   getCatalogDetail: vi.fn(),
   saveCatalog: vi.fn(),
   deleteCatalog: vi.fn(),
+  getModerationDocuments: vi.fn(),
+  getModerationDocument: vi.fn(),
+  getModerationDocumentPreview: vi.fn(),
+  moderateDocument: vi.fn(),
 }))
 
 const pageResponse = (items) =>
@@ -266,6 +270,17 @@ describe('Admin workspace', () => {
       await screen.findByText('Bạn không có quyền quản trị'),
     ).toBeInTheDocument()
     expect(api.getOverview).not.toHaveBeenCalled()
+  })
+
+  it('does not expose document moderation to a normal user with document view access', async () => {
+    getCurrentUser.mockResolvedValue({
+      result: { roles: ['USER'], permissions: ['DOCUMENT_VIEW'] },
+    })
+    open('/admin/documents')
+    expect(
+      await screen.findByText('Bạn không có quyền quản trị'),
+    ).toBeInTheDocument()
+    expect(api.getModerationDocuments).not.toHaveBeenCalled()
   })
 
   it('creates a subject with its selected faculty', async () => {

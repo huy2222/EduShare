@@ -43,6 +43,12 @@ Tài khoản mẫu được tạo khi chạy không chỉ định profile (`defa
 
 Backend giữ cấu trúc feature/controller/service/repository, trả về `ApiResponse`, dùng xác thực cookie và CSRF hiện có. API `/api/v1/admin/access/**` chỉ cho phép ADMIN. Các API quản trị còn lại kiểm tra ADMIN hoặc quyền chức năng tương ứng ở service. Mỗi yêu cầu xác thực đọc lại trạng thái và quyền hiện tại để việc khoá tài khoản hoặc thay đổi quyền áp dụng cho cả token đã cấp.
 
+## Bản xem trước Word khi kiểm duyệt
+
+DOC và DOCX sau khi quét ClamAV sạch được lưu bình thường ở `documents/` rồi được worker nền chuyển thành PDF bằng LibreOffice. Bản PDF nằm riêng trong `previews/`, không public, và chỉ endpoint admin `GET /api/v1/admin/documents/{id}/preview` mới trả nội dung để hiển thị trong màn hình kiểm duyệt.
+
+Trạng thái preview là `PENDING`, `CONVERTING`, `AVAILABLE` hoặc `FAILED`; PDF gốc dùng trực tiếp nên có trạng thái `NOT_REQUIRED`. Backend gửi Word qua HTTP đến Gotenberg, nơi LibreOffice chạy trong Docker; mặc định endpoint là `http://localhost:3000`, hoặc cấu hình biến môi trường `GOTENBERG_URL`. Có thể điều chỉnh thời gian tối đa và chu kỳ worker qua `DOCUMENT_PREVIEW_TIMEOUT_SECONDS` và `DOCUMENT_PREVIEW_POLL_DELAY_MILLISECONDS`.
+
 Quan hệ `subjects.faculty_id` được bổ sung qua Hibernate `ddl-auto: update` đang dùng trong dự án. Môn cũ chưa có quan hệ trực tiếp này hiển thị Chưa phân khoa trong danh sách. Form sửa gợi ý khoa từ ngành đã liên kết; lưu môn sẽ ghi khoa được chọn. Quan hệ ngành–môn cũ được giữ nguyên cho đến khi chỉnh sửa.
 
 ## Kiểm tra

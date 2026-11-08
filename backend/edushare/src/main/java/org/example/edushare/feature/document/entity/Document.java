@@ -108,6 +108,17 @@ public class Document {
     @Builder.Default
     private ScanStatus scanStatus = ScanStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private PreviewStatus previewStatus = PreviewStatus.NOT_REQUIRED;
+
+    @Column(length = 1000)
+    private String previewFileUrl;
+
+    @Column(length = 1000)
+    private String previewError;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "uploader_id", nullable = false)
     private User uploader;
@@ -127,6 +138,7 @@ public class Document {
         updatedAt = now;
         status = status == null ? DocumentStatus.PENDING : status;
         scanStatus = scanStatus == null ? ScanStatus.PENDING : scanStatus;
+        previewStatus = previewStatus == null ? PreviewStatus.NOT_REQUIRED : previewStatus;
         downloadCount = downloadCount == null ? 0L : downloadCount;
         viewCount = viewCount == null ? 0L : viewCount;
         averageRating = averageRating == null ? 0.0 : averageRating;

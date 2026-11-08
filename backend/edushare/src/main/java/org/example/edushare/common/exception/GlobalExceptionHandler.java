@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception", exception);
         ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setCode(ErrorCode.UNCATEGORIED_EXCEPTION.getCode());
-        apiResponse.setMessage(ErrorCode.UNCATEGORIED_EXCEPTION.getMessage());
+        apiResponse.setMessage(ErrorCode.UNCATEGORIED_EXCEPTION.getMessage() + ": " + exception.getMessage());
         return ResponseEntity.status(ErrorCode.UNCATEGORIED_EXCEPTION.getStatusCode())
                 .body(apiResponse);
     }

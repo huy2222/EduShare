@@ -70,6 +70,19 @@ export async function apiGet(path) {
   return parseResponse(response)
 }
 
+export async function apiGetBlob(path) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include' })
+  } catch {
+    throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', undefined, 0)
+  }
+  if (!response.ok) {
+    await parseResponse(response)
+  }
+  return response.blob()
+}
+
 export function apiPostJson(path, body) {
   return requestWithCsrf(path, (csrfToken) => ({
     method: 'POST',

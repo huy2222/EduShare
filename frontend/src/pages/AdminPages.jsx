@@ -9,6 +9,10 @@ import {
   getOverview,
   getRoles,
   getUsers,
+  getModerationDocuments,
+  getModerationDocument,
+  getModerationDocumentPreview,
+  moderateDocument,
   updateUser,
 } from '../services/adminApi'
 import brandMark from '../assets/brand-mark.svg'
@@ -16,6 +20,7 @@ import '../styles/admin.css'
 
 const sections = {
   overview: 'Tổng quan',
+  documents: 'Kiểm duyệt tài liệu',
   users: 'Quản lý người dùng',
   faculties: 'Khoa & ngành',
   subjects: 'Quản lý môn học',
@@ -66,6 +71,12 @@ function Icon({ name }) {
     subjects: (
       <>
         <path d="M12 5C8 2 4 3 2 4v16c4-2 7-1 10 1 3-2 6-3 10-1V4c-4-2-7-1-10 1v16" />
+      </>
+    ),
+    documents: (
+      <>
+        <path d="M6 3h8l4 4v14H6z" />
+        <path d="M14 3v5h5M9 13h6M9 17h6" />
       </>
     ),
     arrow: <path d="M19 12H5m6-6-6 6 6 6" />,
@@ -574,6 +585,309 @@ function AcademicManagement({ currentUser }) {
   )
 }
 
+const moderationSeed = [
+  {
+    id: 'doc-1',
+    title: 'Đề cương & Ngân hàng câu hỏi Lập trình Phần tán 2024.pdf',
+    description: 'Hệ phần tán • K64 CNTT • Giáo trình',
+    uploader: 'Trần Đình Trọng',
+    email: 'trong.td@edushare.edu.vn',
+    time: '10:24, 23/10',
+    size: '4.8 MB (42 trang)',
+    scan: 'CLEAN',
+    status: 'PENDING',
+    type: 'pdf',
+  },
+  {
+    id: 'doc-2',
+    title: 'Giáo trình Nguyên lý hệ điều hành - Chương 4 & 5.docx',
+    description: 'Hệ điều hành • Khoa CNTT',
+    uploader: 'Lê Hoàng Long',
+    email: 'long.lh@edushare.edu.vn',
+    time: '09:15, 23/10',
+    size: '12.3 MB (85 trang)',
+    scan: 'CLEAN',
+    status: 'PENDING',
+    type: 'doc',
+  },
+  {
+    id: 'doc-3',
+    title: 'Slide Bài giảng Mạng máy tính Cisco CCNA - Crack Tool.pdf',
+    description: 'Phát hiện Trojan.PDF.Phish (Mã hash: 8f9c…a12)',
+    uploader: 'Nguyễn Văn Nam',
+    email: 'nam.nv@edushare.edu.vn',
+    time: '08:42, 23/10',
+    size: '26.5 MB (18 trang)',
+    scan: 'INFECTED',
+    status: 'REJECTED',
+    type: 'pdf',
+  },
+  {
+    id: 'doc-4',
+    title: 'Thuyết trình Kiến trúc Vi xử lý ARMv8.pptx',
+    description: 'Kiến trúc máy tính • Khoa Điện tử',
+    uploader: 'Phạm Minh Tuấn',
+    email: 'tuan.pm@edushare.edu.vn',
+    time: 'Hôm qua 21:30',
+    size: '45.0 MB (64 slides)',
+    scan: 'PENDING',
+    status: 'PENDING',
+    type: 'ppt',
+  },
+  {
+    id: 'doc-5',
+    title: 'Bảng tổng hợp dữ liệu thực hành Cơ sở dữ liệu Oracle.xlsx',
+    description: 'Cơ sở dữ liệu • Khoa CNTT',
+    uploader: 'Hoàng Mai Linh',
+    email: 'linh.hm@edushare.edu.vn',
+    time: 'Hôm qua 18:20',
+    size: '2.1 MB (3 sheets)',
+    scan: 'CLEAN',
+    status: 'APPROVED',
+    type: 'sheet',
+  },
+]
+
+const moderationStatusLabels = {
+  PENDING: 'Chờ duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Bị chặn',
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '—'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let value = bytes
+  let index = 0
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024
+    index += 1
+  }
+  return `${value.toFixed(index ? 1 : 0)} ${units[index]}`
+}
+
+const normalizeModerationDocument = (item) => ({
+  id: item.id,
+  title: item.title,
+  description: item.description || `${item.subjectCode || ''} ${item.subjectName || ''}`.trim(),
+  uploader: item.uploaderName || 'Chưa cập nhật',
+  email: item.uploaderEmail || '—',
+  time: item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : '—',
+  size: formatFileSize(item.fileSize),
+  scan: item.scanStatus,
+  status: item.status,
+  type: (item.fileType || 'file').toLowerCase(),
+  previewStatus: item.previewStatus || 'NOT_REQUIRED',
+  previewError: item.previewError || '',
+  fileName: item.fileName,
+  objectKey: item.objectKey,
+  raw: item,
+})
+
+function DocumentModeration() {
+  const [documents, setDocuments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reload, setReload] = useState(0)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('PENDING')
+  const [scanFilter, setScanFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [selected, setSelected] = useState([])
+  const [notice, setNotice] = useState('')
+  const [detail, setDetail] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
+
+  useEffect(() => {
+    let active = true
+    let objectUrl = ''
+    setPreviewUrl('')
+    const canLoadPreview = detail && (
+      detail.type === 'pdf' ||
+      ((detail.type === 'doc' || detail.type === 'docx') && detail.previewStatus === 'AVAILABLE')
+    )
+    if (!canLoadPreview) return undefined
+    getModerationDocumentPreview(detail.id)
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob)
+        if (active) setPreviewUrl(objectUrl)
+      })
+      .catch((requestError) => active && setError(`Không thể tải bản xem trước: ${requestError.message}`))
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [detail])
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    getModerationDocuments()
+      .then((response) => {
+        if (active) {
+          setDocuments((response.result?.items || []).map(normalizeModerationDocument))
+          setError('')
+        }
+      })
+      .catch((requestError) => active && setError(requestError.message))
+      .finally(() => active && setLoading(false))
+    return () => { active = false }
+  }, [reload])
+
+  const visible = documents.filter((document) => {
+    const matchesQuery = [document.title, document.uploader, document.email]
+      .join(' ')
+      .toLocaleLowerCase('vi')
+      .includes(query.trim().toLocaleLowerCase('vi'))
+    return (
+      matchesQuery &&
+      (!statusFilter || document.status === statusFilter) &&
+      (!scanFilter || document.scan === scanFilter) &&
+      (!typeFilter || document.type === typeFilter)
+    )
+  })
+  const selectable = visible.filter(
+    (document) => document.status === 'PENDING' && document.scan === 'CLEAN',
+  )
+  const allSelected = selectable.length > 0 && selectable.every((item) => selected.includes(item.id))
+  const pendingCount = documents.filter((item) => item.status === 'PENDING').length
+  const cleanCount = documents.filter((item) => item.scan === 'CLEAN').length
+
+  const toggleSelected = (id) =>
+    setSelected((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    )
+
+  const updateStatus = async (ids, status, reason = '') => {
+    if (!ids.length) return
+    try {
+      await Promise.all(ids.map((id) => moderateDocument(id, status, reason)))
+      setSelected([])
+      setDetail(null)
+      setNotice(status === 'APPROVED' ? 'Đã duyệt tài liệu đã chọn.' : 'Đã từ chối tài liệu đã chọn.')
+      setReload((value) => value + 1)
+    } catch (requestError) {
+      setError(requestError.message)
+    }
+  }
+
+  return (
+    <div className="admin-moderation">
+      <div className="admin-moderation-topline">
+        <span><i className="admin-status-dot" /> Hệ thống ClamAV 1.2: Đang trực tuyến</span>
+      </div>
+      <div className="admin-moderation-stats">
+        <article><div><small>Chờ phê duyệt</small><strong>{pendingCount}</strong></div><span>▣</span></article>
+        <article><div><small>Đã duyệt hôm nay</small><strong className="is-blue">38</strong></div><span>✓</span></article>
+        <article><div><small>Từ chối hôm nay</small><strong className="is-red">3</strong></div><span>×</span></article>
+        <article><div><small>Tổng tài liệu</small><strong>4,820</strong></div><span>▤</span></article>
+      </div>
+      <section className="admin-moderation-panel">
+        <div className="admin-moderation-toolbar">
+          <label className="admin-moderation-search">
+            <Icon name="search" />
+            <input
+              aria-label="Tìm kiếm tài liệu, người tải"
+              placeholder="Tìm kiếm tên tài liệu, người tải…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <select aria-label="Lọc trạng thái tài liệu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Tất cả trạng thái</option>
+            <option value="PENDING">Chờ phê duyệt ({pendingCount})</option>
+            <option value="APPROVED">Đã duyệt</option>
+            <option value="REJECTED">Bị chặn</option>
+          </select>
+          <select aria-label="Lọc định dạng" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <option value="">Tất cả định dạng</option>
+            <option value="pdf">PDF</option>
+            <option value="doc">DOCX</option>
+            <option value="ppt">PPTX</option>
+          </select>
+          <select aria-label="Lọc quét virus" value={scanFilter} onChange={(event) => setScanFilter(event.target.value)}>
+            <option value="">Quét virus: Tất cả</option>
+            <option value="CLEAN">An toàn</option>
+            <option value="INFECTED">Mã độc</option>
+            <option value="PENDING">Chưa quét</option>
+          </select>
+          <span className="admin-selected-count">Đã chọn {selected.length}</span>
+          <button type="button" onClick={() => updateStatus(selected, 'REJECTED')} disabled={!selected.length}>Từ chối loạt</button>
+          <button className="admin-primary" type="button" onClick={() => updateStatus(selected, 'APPROVED')} disabled={!selected.length}>Duyệt đã chọn</button>
+        </div>
+        {notice && <p className="admin-success" role="status">{notice}</p>}
+        {error && <p className="admin-error" role="alert">{error} <button type="button" onClick={() => setReload((value) => value + 1)}>Thử lại</button></p>}
+        <div className="admin-moderation-table-scroll">
+          <table className="admin-moderation-table">
+            <thead><tr>
+              <th><input aria-label="Chọn tất cả tài liệu an toàn" type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectable.map((item) => item.id))} /></th>
+              <th>TÀI LIỆU</th><th>NGƯỜI TẢI</th><th>THỜI GIAN</th><th>DUNG LƯỢNG</th><th>QUÉT VIRUS</th><th>TRẠNG THÁI</th><th>THAO TÁC</th>
+            </tr></thead>
+            <tbody>
+              {loading ? <tr><td colSpan="8" className="admin-empty">Đang tải tài liệu chờ duyệt…</td></tr> : visible.length ? visible.map((document) => {
+                const canApprove = document.status === 'PENDING' && document.scan === 'CLEAN'
+                return <tr key={document.id} className={document.scan === 'INFECTED' ? 'is-infected' : ''}>
+                  <td><input aria-label={`Chọn ${document.title}`} type="checkbox" checked={selected.includes(document.id)} disabled={!canApprove} onChange={() => toggleSelected(document.id)} /></td>
+                  <td><div className="moderation-document"><span className={`moderation-file-icon ${document.type}`}>▤</span><div><b>{document.title}</b><small>{document.description}</small></div></div></td>
+                  <td><div className="moderation-uploader"><b>{document.uploader}</b><small>{document.email}</small></div></td>
+                  <td>{document.time}</td><td>{document.size}</td>
+                  <td><span className={`moderation-pill scan-${document.scan.toLowerCase()}`}>{document.scan === 'CLEAN' ? '◉ An toàn' : document.scan === 'INFECTED' ? '⊗ Mã độc' : '◌ Lỗi quét'}</span></td>
+                  <td><span className={`moderation-pill status-${document.status.toLowerCase()}`}>{moderationStatusLabels[document.status]}</span></td>
+                  <td><button className="moderation-action" type="button" onClick={async () => {
+                    try {
+                      const response = await getModerationDocument(document.id)
+                      setDetail(normalizeModerationDocument(response.result))
+                    } catch (requestError) {
+                      setError(requestError.message)
+                    }
+                  }}>{canApprove ? 'Kiểm duyệt' : 'Chi tiết'}</button></td>
+                </tr>
+              }) : <tr><td colSpan="8" className="admin-empty">Không tìm thấy tài liệu phù hợp.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <div className="admin-moderation-footer">
+          <span>Đang hiển thị {visible.length} / {documents.length} tài liệu</span>
+          <span>Trang 1 / 1</span>
+        </div>
+      </section>
+      {detail && (
+        <div className="moderation-detail-backdrop" role="presentation">
+          <section className="moderation-detail-screen" role="dialog" aria-modal="true" aria-labelledby="moderation-detail-title">
+            <header className="moderation-detail-header">
+              <button type="button" className="moderation-back-button" onClick={() => setDetail(null)}>← Quay lại danh sách</button>
+              <span className="moderation-detail-divider">/</span>
+              <h2 id="moderation-detail-title">{detail.title}</h2>
+              <span className={`moderation-pill status-${detail.status.toLowerCase()}`}>{detail.status === 'APPROVED' ? '● Đã duyệt' : detail.status === 'REJECTED' ? '● Bị chặn' : '● Chờ duyệt'}</span>
+              <button type="button" className="moderation-close-button" aria-label="Đóng chi tiết" onClick={() => setDetail(null)}>×</button>
+            </header>
+            <div className="moderation-detail-body">
+              <main className="moderation-document-viewer">
+                
+                <div className="moderation-viewer-canvas">
+                  {detail.type === 'pdf' || ((detail.type === 'doc' || detail.type === 'docx') && detail.previewStatus === 'AVAILABLE')
+                    ? (previewUrl ? <iframe title={`Xem trước ${detail.title}`} src={previewUrl} /> : <div className="moderation-preview-placeholder"><span>…</span><b>Đang tải bản xem trước…</b><small>Đang lấy bản PDF an toàn từ Cloudflare R2.</small></div>)
+                    : detail.previewStatus === 'PENDING' || detail.previewStatus === 'CONVERTING'
+                      ? <div className="moderation-preview-placeholder"><span>…</span><b>Đang tạo bản xem trước PDF</b><small>LibreOffice đang chuyển đổi tệp Word sau khi quét virus.</small></div>
+                      : detail.previewStatus === 'FAILED'
+                        ? <div className="moderation-preview-placeholder"><span>!</span><b>Chưa tạo được bản xem trước</b><small>{detail.previewError || 'Vui lòng tải tệp gốc để kiểm tra.'}</small></div>
+                        : <div className="moderation-preview-placeholder"><span>▤</span><b>{detail.fileName}</b><small>Định dạng này chưa có chế độ xem trước trong trình duyệt.</small></div>}
+                </div>
+              </main>
+              <aside className="moderation-info-column">
+                <section className="moderation-info-card"><h3>▣ &nbsp;Thông tin tệp</h3><dl><dt>Tên tệp</dt><dd>{detail.fileName}</dd><dt>Định dạng</dt><dd><span className="moderation-file-type">▤ {detail.type.toUpperCase()}</span></dd><dt>Dung lượng</dt><dd>{detail.size}</dd><dt>Môn học</dt><dd>{detail.raw?.subjectCode} · {detail.raw?.subjectName}</dd><dt>Ngày tải</dt><dd>{detail.time}</dd></dl></section>
+                <section className="moderation-info-card"><h3>♙ &nbsp;Người tải lên</h3><dl><dt>Họ và tên</dt><dd>{detail.uploader}</dd><dt>Email</dt><dd>{detail.email}</dd><dt>Khoa / lớp</dt><dd>{detail.raw?.facultyName || '—'}</dd></dl></section>
+                <section className="moderation-scan-card"><strong>♧ &nbsp;An toàn (ClamAV Clean)</strong><span>Không phát hiện mã độc</span><b>✓</b></section>
+              </aside>
+            </div>
+            <footer className="moderation-review-bar"><div><span className={`moderation-file-icon ${detail.type}`}>▤</span><b>{detail.title}</b><span className={`moderation-pill status-${detail.status.toLowerCase()}`}>{detail.status === 'APPROVED' ? '● Đã duyệt' : detail.status === 'REJECTED' ? '● Bị chặn' : '● Sẵn sàng duyệt'}</span></div><div><button type="button" className="moderation-reject-button" onClick={() => updateStatus([detail.id], 'REJECTED', 'Tài liệu không đạt yêu cầu kiểm duyệt.')}>× &nbsp;Từ chối</button><button type="button" className="admin-primary moderation-approve-button" onClick={() => updateStatus([detail.id], 'APPROVED')}>✓ &nbsp;Phê duyệt</button></div></footer>
+          </section>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminPages({
   onLogout,
   currentUser,
@@ -583,6 +897,7 @@ export default function AdminPages({
   const [user, setUser] = useState(currentUser || null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   useEffect(() => {
     if (currentUser !== undefined) {
       setUser(currentUser)
@@ -631,7 +946,7 @@ export default function AdminPages({
       />
     )
   return (
-    <div className="admin-app">
+    <div className={`admin-app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/admin">
           <img src={brandMark} alt="" />
@@ -660,6 +975,15 @@ export default function AdminPages({
       </aside>
       <div className="admin-workspace">
         <header className="admin-topbar">
+          <button
+            type="button"
+            className="admin-sidebar-toggle"
+            aria-label={sidebarCollapsed ? 'Mở thanh điều hướng' : 'Ẩn thanh điều hướng'}
+            title={sidebarCollapsed ? 'Mở thanh điều hướng' : 'Ẩn thanh điều hướng'}
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            {sidebarCollapsed ? '☰' : '←'}
+          </button>
           <span>Admin Workspace</span>
           <div>
             <span className="admin-avatar">
@@ -682,11 +1006,15 @@ export default function AdminPages({
                   ? 'Quản lý tài khoản, vai trò và quyền truy cập hệ thống.'
                   : section === 'access'
                     ? 'Quản lý vai trò, cấu hình quyền và phân quyền người dùng.'
+                  : section === 'documents'
+                    ? 'Kiểm tra an toàn tệp tin và phê duyệt tài liệu trước khi xuất bản.'
                     : 'Quản lý danh mục đào tạo và tổ chức tài liệu học tập.'}
             </span>
           </div>
           {section === 'overview' ? (
             <Overview />
+          ) : section === 'documents' ? (
+            <DocumentModeration />
           ) : section === 'users' ? (
             <Users currentUser={user} />
           ) : section === 'access' ? (

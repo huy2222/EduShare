@@ -3,10 +3,11 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import UploadPage from './UploadPage'
-import { getAcademicCatalog, uploadDocument } from '../services/documentApi'
+import { getAcademicCatalog, getDocumentScanStatus, uploadDocument } from '../services/documentApi'
 
 vi.mock('../services/documentApi', () => ({
   getAcademicCatalog: vi.fn(),
+  getDocumentScanStatus: vi.fn(),
   uploadDocument: vi.fn(),
 }))
 
@@ -40,7 +41,7 @@ describe('UploadPage', () => {
       ],
     })
     uploadDocument.mockResolvedValue({
-      result: { title: 'Slide Cấu trúc dữ liệu', status: 'PENDING' },
+      result: { id: 'document-id', title: 'Slide Cấu trúc dữ liệu', status: 'PENDING' },
     })
   })
 
@@ -78,7 +79,7 @@ describe('UploadPage', () => {
       },
       file,
     ))
-    expect(await screen.findByText(/đang chờ kiểm duyệt/)).toBeInTheDocument()
+    expect(await screen.findByText(/đang được quét virus/)).toBeInTheDocument()
   })
 
   it('shows an error toast when the upload fails', async () => {

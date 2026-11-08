@@ -13,12 +13,14 @@ import org.example.edushare.feature.document.entity.Document;
 import org.example.edushare.feature.document.entity.DocumentStatus;
 import org.example.edushare.feature.document.entity.FileType;
 import org.example.edushare.feature.document.entity.ScanStatus;
+import org.example.edushare.feature.document.entity.PreviewStatus;
 import org.example.edushare.feature.document.repository.DocumentRepository;
 import org.example.edushare.feature.user.entity.User;
 import org.example.edushare.feature.user.repository.UserRepository;
 import org.example.edushare.infrastructure.storage.R2StorageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +31,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +48,7 @@ public class DocumentService {
     private final SubjectRepository subjectRepository;
 
     @Transactional
-    @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('DOCUMENT_UPLOAD')")
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_UPLOAD')")
     public Document create(@Valid DocumentCreateRequest request, MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new AppException(ErrorCode.DOCUMENT_FILE_EMPTY);
@@ -55,12 +58,11 @@ public class DocumentService {
         FileType fileType = resolveFileType(fileName);
         User uploader = getCurrentUser();
         Subject subject = resolveSubject(request);
-        String objectKey = storageService.upload(file);
-
+        String quarantineKey = storageService.uploadToQuarantine(file);
         Document document = Document.builder()
                 .title(request.getTitle().trim())
                 .description(trimToNull(request.getDescription()))
-                .fileUrl(objectKey)
+                .fileUrl(quarantineKey)
                 .fileName(fileName)
                 .fileSize(file.getSize())
                 .fileType(fileType)
@@ -69,13 +71,15 @@ public class DocumentService {
                 .academicYear(trimToNull(request.getAcademicYear()))
                 .uploader(uploader)
                 .subject(subject)
+                .scanStatus(ScanStatus.PENDING)
+                .previewStatus(requiresPdfPreview(fileType) ? PreviewStatus.PENDING : PreviewStatus.NOT_REQUIRED)
                 .build();
 
         try {
             return documentRepository.save(document);
         } catch (RuntimeException exception) {
             try {
-                storageService.delete(objectKey);
+                storageService.delete(quarantineKey);
             } catch (RuntimeException cleanupException) {
                 exception.addSuppressed(cleanupException);
             }
@@ -99,6 +103,16 @@ public class DocumentService {
     @org.springframework.security.access.prepost.PreAuthorize("@adminAuthorization.has('DOCUMENT_VIEW')")
     public List<Document> getCurrentUserDocuments() {
         return documentRepository.findAllByUploaderIdOrderByCreatedAtDesc(getCurrentUser().getId());
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_UPLOAD')")
+    public Document getCurrentUserDocument(UUID documentId) {
+        Document document = findDocument(documentId);
+        if (!document.getUploader().getId().equals(getCurrentUser().getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        return document;
     }
 
     @Transactional
@@ -182,5 +196,9 @@ public class DocumentService {
             return null;
         }
         return value.trim();
+    }
+
+    private boolean requiresPdfPreview(FileType fileType) {
+        return fileType == FileType.DOC || fileType == FileType.DOCX;
     }
 }
