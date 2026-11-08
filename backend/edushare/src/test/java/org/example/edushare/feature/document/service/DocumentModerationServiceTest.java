@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,5 +79,22 @@ class DocumentModerationServiceTest {
         assertEquals(ModerationAction.REJECTED, result.getAction());
         assertEquals("Copyright violation", result.getReason());
         assertEquals(moderator, result.getModerator());
+    }
+
+    @Test
+    void statsUseRepositoryCountsInsteadOfCurrentPageSize() {
+        when(documentRepository.countByStatus(DocumentStatus.PENDING)).thenReturn(12L);
+        when(documentRepository.count()).thenReturn(4820L);
+        when(moderationRepository.countByActionAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                eq(ModerationAction.APPROVED), any(), any())).thenReturn(38L);
+        when(moderationRepository.countByActionAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                eq(ModerationAction.REJECTED), any(), any())).thenReturn(3L);
+
+        var stats = moderationService.stats();
+
+        assertEquals(12L, stats.getPending());
+        assertEquals(38L, stats.getApprovedToday());
+        assertEquals(3L, stats.getRejectedToday());
+        assertEquals(4820L, stats.getTotal());
     }
 }

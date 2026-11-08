@@ -22,6 +22,7 @@ export const saveCatalog = (type, data) =>
 export const deleteCatalog = (type, id) => apiDelete(`/admin/${type}/${id}`)
 export const getModerationDocuments = (page = 0, size = 20) =>
   apiGet(`/admin/documents?page=${page}&size=${size}`)
+export const getModerationStats = () => apiGet('/admin/documents/stats')
 export const getModerationDocument = (id) => apiGet(`/admin/documents/${id}`)
 export const getModerationDocumentContent = (id) =>
   apiGetBlob(`/admin/documents/${id}/content`)

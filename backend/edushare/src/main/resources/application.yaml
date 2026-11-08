@@ -12,7 +12,7 @@ spring:
     open-in-view: false
     hibernate:
         ddl-auto: update
-    show-sql: true
+    show-sql: false
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -37,7 +37,7 @@ app:
     admin-email: ${APP_ADMIN_EMAIL:}
     cookie:
       name: ${AUTH_COOKIE_NAME:access_token}
-      secure: ${AUTH_COOKIE_SECURE:true}
+      secure: ${AUTH_COOKIE_SECURE:false}
       same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
       path: ${AUTH_COOKIE_PATH:/}
     cors:

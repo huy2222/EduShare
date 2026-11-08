@@ -625,7 +625,7 @@
 
 /* Document moderation workspace */
 .admin-moderation {
-  margin-top: 26px;
+  margin-top: 18px;
 }
 
 .admin-moderation-topline {
@@ -662,11 +662,11 @@
 }
 
 .admin-moderation-stats article {
-  min-height: 82px;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 17px 18px;
+  padding: 13px 16px;
   border: 1px solid #e6e9ef;
   border-radius: 10px;
   background: #fff;
@@ -715,11 +715,22 @@
 .admin-moderation-toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 7px;
-  padding: 11px;
+  padding: 10px 12px;
   background: #fafbfc;
   border-bottom: 1px solid #ebedf1;
 }
+
+.admin-moderation-filters,
+.admin-moderation-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-moderation-filters { min-width: 0; }
+.admin-moderation-bulk-actions { flex: 0 0 auto; }
 
 .admin-moderation-search {
   display: flex;
@@ -738,7 +749,7 @@
 .admin-moderation-search input { min-width: 0; width: 100%; border: 0; outline: 0; color: #303948; font-size: 11px; background: transparent; }
 
 .admin-moderation-toolbar select,
-.admin-moderation-toolbar > button {
+.admin-moderation-bulk-actions > button {
   height: 31px;
   padding: 0 9px;
   border: 1px solid #e2e5ea;
@@ -749,17 +760,17 @@
   white-space: nowrap;
 }
 
-.admin-moderation-toolbar > button { cursor: pointer; }
-.admin-moderation-toolbar > button:disabled { cursor: not-allowed; opacity: .5; }
-.admin-moderation-toolbar > button.admin-primary { border-color: #075dcc; background: #075dcc; color: #fff; }
-.admin-selected-count { margin-left: auto; color: #788193; font-size: 11px; white-space: nowrap; }
+.admin-moderation-bulk-actions > button { cursor: pointer; }
+.admin-moderation-bulk-actions > button:disabled { cursor: not-allowed; opacity: .5; }
+.admin-moderation-bulk-actions > button.admin-primary { border-color: #075dcc; background: #075dcc; color: #fff; }
+.admin-selected-count { color: #788193; font-size: 11px; white-space: nowrap; }
 
 .admin-moderation-panel > .admin-success { margin: 10px 14px 0; }
 
 .admin-moderation-table-scroll { overflow-x: auto; }
 .admin-moderation-table { width: 100%; min-width: 1050px; border-collapse: collapse; }
 .admin-moderation-table th { padding: 14px 12px; background: #f5f6f8; color: #687386; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-align: left; white-space: nowrap; }
-.admin-moderation-table td { padding: 16px 12px; border-bottom: 1px solid #f0f1f4; color: #4d5665; font-size: 13px; vertical-align: middle; }
+.admin-moderation-table td { padding: 12px; border-bottom: 1px solid #f0f1f4; color: #4d5665; font-size: 13px; vertical-align: middle; }
 .admin-moderation-table th:first-child, .admin-moderation-table td:first-child { width: 32px; padding-left: 14px; }
 .admin-moderation-table tbody tr:hover { background: #fafcff; }
 .admin-moderation-table tbody tr.is-infected { background: #fff5f5; }
@@ -787,7 +798,7 @@
 
 .moderation-detail-backdrop { position: fixed; z-index: 20; inset: 0; display: flex; background: #f5f7fa; }
 .moderation-detail-screen { display: flex; flex: 1; min-width: 0; flex-direction: column; color: #354052; }
-.moderation-detail-header { display: flex; align-items: center; gap: 14px; min-height: 72px; padding: 0 clamp(18px, 3vw, 42px); border-bottom: 1px solid #e1e6ee; background: #fff; }
+.moderation-detail-header { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 clamp(16px, 2vw, 30px); border-bottom: 1px solid #e1e6ee; background: #fff; }
 .moderation-back-button, .moderation-close-button { border: 0; background: transparent; color: #1261d9; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .moderation-back-button { padding: 10px 0; }
 .moderation-detail-divider { color: #c4cbd5; font-size: 18px; }
@@ -796,19 +807,19 @@
 .moderation-detail-header .moderation-pill,
 .moderation-review-bar .moderation-pill { font-size: 12px; padding: 6px 10px; }
 .moderation-close-button { margin-left: auto; color: #697486; font-size: 28px; line-height: 1; }
-.moderation-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); flex: 1; min-height: 0; gap: 20px; padding: 20px clamp(16px, 3vw, 42px) 24px; overflow: auto; }
+.moderation-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 310px); flex: 1; min-height: 0; gap: 14px; padding: 14px clamp(12px, 2vw, 30px); overflow: auto; }
 .moderation-document-viewer { display: flex; min-height: 0; flex-direction: column; overflow: hidden; border: 1px solid #dfe5ed; border-radius: 12px; background: #e9edf2; box-shadow: 0 5px 18px rgba(35, 48, 67, .06); }
 .moderation-viewer-toolbar { display: flex; align-items: center; gap: 9px; min-height: 50px; padding: 0 14px; border-bottom: 1px solid #e0e4eb; background: #f8f9fb; color: #687486; font-size: 13px; }
 .moderation-viewer-toolbar button, .moderation-viewer-toolbar > span:not(.moderation-toolbar-spacer) { min-height: 31px; padding: 0 10px; border: 1px solid #e1e5eb; border-radius: 6px; background: #fff; color: #5f6a7c; font-size: 13px; }
 .moderation-viewer-toolbar button { cursor: pointer; }
 .moderation-viewer-toolbar .moderation-toolbar-spacer { flex: 1; }
-.moderation-viewer-canvas { display: grid; flex: 1; min-height: 540px; place-items: center; padding: 24px; overflow: auto; background: #e7ebef; }
-.moderation-viewer-canvas iframe { width: 100%; min-height: 650px; align-self: stretch; border: 0; background: #fff; box-shadow: 0 3px 10px rgba(35, 48, 67, .12); }
+.moderation-viewer-canvas { display: grid; flex: 1; min-height: 520px; place-items: center; padding: 12px; overflow: auto; background: #e7ebef; }
+.moderation-viewer-canvas iframe { width: 100%; height: 100%; min-height: 620px; align-self: stretch; border: 0; background: #fff; box-shadow: 0 3px 10px rgba(35, 48, 67, .12); }
 .moderation-info-column { display: flex; flex-direction: column; gap: 14px; }
-.moderation-info-card { padding: 18px; border: 1px solid #e4e8ee; border-radius: 10px; background: #fff; box-shadow: 0 2px 6px rgba(28, 41, 61, .025); }
+.moderation-info-card { padding: 14px 16px; border: 1px solid #e4e8ee; border-radius: 10px; background: #fff; box-shadow: 0 2px 6px rgba(28, 41, 61, .025); }
 .moderation-info-card h3 { margin: 0 0 17px; color: #263348; font-size: 15px; }
 .moderation-info-card dl { margin: 0; }
-.moderation-info-card dt { margin-top: 13px; color: #8a93a1; font-size: 12px; font-weight: 600; }
+.moderation-info-card dt { margin-top: 10px; color: #8a93a1; font-size: 12px; font-weight: 600; }
 .moderation-info-card dt:first-child { margin-top: 0; }
 .moderation-info-card dd { margin: 5px 0 0; color: #354052; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
 .moderation-file-type { display: inline-flex; padding: 4px 6px; border-radius: 4px; color: #4c69bd; background: #e5eaff; font-weight: 700; }
@@ -816,7 +827,7 @@
 .moderation-scan-card strong { font-size: 14px; }
 .moderation-scan-card span { color: #6c8e7c; font-size: 13px; }
 .moderation-scan-card b { position: absolute; top: 12px; right: 13px; font-size: 15px; }
-.moderation-review-bar { display: flex; align-items: center; justify-content: space-between; gap: 15px; min-height: 74px; padding: 0 clamp(18px, 3vw, 42px); border-top: 1px solid #e1e5ea; background: #fff; box-shadow: 0 -3px 10px rgba(35, 48, 67, .06); }
+.moderation-review-bar { display: flex; align-items: center; justify-content: space-between; gap: 15px; min-height: 64px; padding: 0 clamp(16px, 2vw, 30px); border-top: 1px solid #e1e5ea; background: #fff; box-shadow: 0 -3px 10px rgba(35, 48, 67, .06); }
 .moderation-review-bar > div { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .moderation-review-bar > div:first-child b { max-width: 430px; overflow: hidden; color: #3a4658; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .moderation-review-bar button { min-height: 40px; padding: 0 18px; border-radius: 7px; font-size: 14px; font-weight: 700; }
@@ -841,15 +852,35 @@
 .moderation-reject-button { border: 1px solid #f0c2c2; background: #fff; color: #d74c50; }
 .moderation-approve-button { border: 1px solid #075dcc; }
 
+.moderation-reject-form { padding: 4px 24px 22px; }
+.moderation-reject-form > p { margin: 0 0 18px; color: #647086; font-size: 13px; line-height: 1.55; }
+.moderation-reject-form > p strong { color: #344157; }
+.moderation-reject-form > label { display: block; margin-bottom: 8px; color: #344157; font-size: 13px; font-weight: 700; }
+.moderation-reject-form > label span { color: #d94348; }
+.moderation-reject-form textarea { width: 100%; resize: vertical; min-height: 118px; padding: 12px; border: 1px solid #d9dfe8; border-radius: 8px; color: #344157; line-height: 1.5; outline: none; }
+.moderation-reject-form textarea:focus { border-color: #3778ed; box-shadow: 0 0 0 3px rgba(55, 120, 237, .12); }
+.moderation-reject-form textarea[aria-invalid="true"] { border-color: #dc565a; }
+.moderation-reject-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; color: #8993a3; }
+.moderation-reject-error { margin: 8px 0 0 !important; color: #cf3f44 !important; font-weight: 600; }
+.moderation-reject-form .admin-modal-actions { margin-top: 20px; }
+.moderation-reject-form .moderation-confirm-reject { border-color: #d94348; background: #d94348; color: #fff; }
+.moderation-reject-form .moderation-confirm-reject:hover:not(:disabled) { background: #c7373c; }
+
 @media (max-width: 1050px) {
   .admin-moderation-toolbar { flex-wrap: wrap; }
-  .admin-selected-count { margin-left: 0; }
+  .admin-moderation-filters { flex: 1 1 100%; }
+  .admin-moderation-bulk-actions { width: 100%; justify-content: flex-end; }
   .admin-moderation-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 620px) {
   .admin-moderation-stats { grid-template-columns: 1fr; }
   .admin-moderation-search { min-width: 100%; }
+  .admin-moderation-filters { flex-wrap: wrap; }
+  .admin-moderation-filters select { flex: 1 1 calc(50% - 7px); }
+  .admin-moderation-bulk-actions { justify-content: stretch; }
+  .admin-moderation-bulk-actions .admin-selected-count { display: none; }
+  .admin-moderation-bulk-actions button { flex: 1; }
   .moderation-detail { padding: 16px; }
   .moderation-detail-grid { grid-template-columns: 1fr; }
   .moderation-detail-header { padding: 0 12px; gap: 6px; }
