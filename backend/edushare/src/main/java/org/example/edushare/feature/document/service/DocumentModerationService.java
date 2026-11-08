@@ -12,6 +12,7 @@ import org.example.edushare.feature.document.entity.ModerationAction;
 import org.example.edushare.feature.document.entity.ScanStatus;
 import org.example.edushare.feature.document.dto.response.DocumentModerationPageResponse;
 import org.example.edushare.feature.document.dto.response.DocumentModerationResponse;
+import org.example.edushare.feature.document.dto.response.DocumentModerationStatsResponse;
 import org.example.edushare.feature.document.repository.DocumentModerationRepository;
 import org.example.edushare.feature.document.repository.DocumentRepository;
 import org.example.edushare.feature.user.entity.User;
@@ -26,6 +27,8 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -43,6 +46,23 @@ public class DocumentModerationService {
     public DocumentModerationPageResponse listPending(Pageable pageable) {
         return DocumentModerationPageResponse.from(
                 documentRepository.findAllByStatusAndScanStatus(DocumentStatus.PENDING, ScanStatus.CLEAN, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
+    public DocumentModerationStatsResponse stats() {
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfTomorrow = startOfToday.plusDays(1);
+        return DocumentModerationStatsResponse.builder()
+                .pending(documentRepository.countByStatus(DocumentStatus.PENDING))
+                .approvedToday(moderationRepository
+                        .countByActionAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                                ModerationAction.APPROVED, startOfToday, startOfTomorrow))
+                .rejectedToday(moderationRepository
+                        .countByActionAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                                ModerationAction.REJECTED, startOfToday, startOfTomorrow))
+                .total(documentRepository.count())
+                .build();
     }
 
     @Transactional(readOnly = true)

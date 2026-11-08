@@ -16,6 +16,7 @@ vi.mock('../services/adminApi', () => ({
   saveCatalog: vi.fn(),
   deleteCatalog: vi.fn(),
   getModerationDocuments: vi.fn(),
+  getModerationStats: vi.fn(),
   getModerationDocument: vi.fn(),
   getModerationDocumentPreview: vi.fn(),
   moderateDocument: vi.fn(),
@@ -281,6 +282,47 @@ describe('Admin workspace', () => {
       await screen.findByText('Bạn không có quyền quản trị'),
     ).toBeInTheDocument()
     expect(api.getModerationDocuments).not.toHaveBeenCalled()
+  })
+
+  it('requires a reason before rejecting a document', async () => {
+    const document = {
+      id: 'doc-1',
+      title: 'Giáo trình kiểm thử',
+      fileName: 'giao-trinh.txt',
+      fileType: 'TXT',
+      fileSize: 1024,
+      uploaderName: 'Nguyễn An',
+      uploaderEmail: 'an@example.com',
+      scanStatus: 'CLEAN',
+      status: 'PENDING',
+      previewStatus: 'NOT_REQUIRED',
+    }
+    api.getModerationDocuments.mockResolvedValue({ result: { items: [document] } })
+    api.getModerationStats.mockResolvedValue({
+      result: { pending: 12, approvedToday: 7, rejectedToday: 2, total: 4820 },
+    })
+    api.getModerationDocument.mockResolvedValue({ result: document })
+    api.moderateDocument.mockResolvedValue({})
+
+    open('/admin/documents')
+    expect(await screen.findByText('4.820')).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Kiểm duyệt' }))
+    fireEvent.click(await screen.findByRole('button', { name: /×\s*Từ chối/ }))
+
+    expect(await screen.findByRole('dialog', { name: 'Lý do từ chối tài liệu' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Xác nhận từ chối' })).toBeDisabled()
+    fireEvent.change(screen.getByRole('textbox', { name: /Lý do từ chối/ }), {
+      target: { value: 'Nội dung không đúng môn học.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận từ chối' }))
+
+    await waitFor(() =>
+      expect(api.moderateDocument).toHaveBeenCalledWith(
+        'doc-1',
+        'REJECTED',
+        'Nội dung không đúng môn học.',
+      ),
+    )
   })
 
   it('creates a subject with its selected faculty', async () => {

@@ -17,6 +17,8 @@ import java.util.Optional;
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
     boolean existsBySubjectId(String subjectId);
 
+    long countByStatus(DocumentStatus status);
+
     Page<Document> findAllByStatus(DocumentStatus status, Pageable pageable);
 
     Page<Document> findAllByStatusAndScanStatus(

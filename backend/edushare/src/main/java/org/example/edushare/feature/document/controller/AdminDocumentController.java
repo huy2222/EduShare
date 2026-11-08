@@ -6,6 +6,7 @@ import org.example.edushare.common.response.ApiResponse;
 import org.example.edushare.feature.document.dto.request.DocumentModerationRequest;
 import org.example.edushare.feature.document.dto.response.DocumentModerationPageResponse;
 import org.example.edushare.feature.document.dto.response.DocumentModerationResponse;
+import org.example.edushare.feature.document.dto.response.DocumentModerationStatsResponse;
 import org.example.edushare.feature.document.service.DocumentModerationService;
 import org.example.edushare.feature.document.service.DocumentPreviewService;
 import org.example.edushare.infrastructure.storage.R2StorageService;
@@ -38,14 +39,21 @@ public class AdminDocumentController {
                 .build();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/stats")
+    public ApiResponse<DocumentModerationStatsResponse> stats() {
+        return ApiResponse.<DocumentModerationStatsResponse>builder()
+                .result(moderationService.stats())
+                .build();
+    }
+
+    @GetMapping("/{id:[0-9a-fA-F-]+}")
     public ApiResponse<DocumentModerationResponse> detail(@PathVariable UUID id) {
         return ApiResponse.<DocumentModerationResponse>builder()
                 .result(moderationService.detail(id))
                 .build();
     }
 
-    @GetMapping("/{id}/content")
+    @GetMapping("/{id:[0-9a-fA-F-]+}/content")
     public ResponseEntity<byte[]> content(@PathVariable UUID id) {
         DocumentModerationResponse document = moderationService.detail(id);
         var object = storageService.getObjectBytes(document.getObjectKey());
@@ -65,7 +73,7 @@ public class AdminDocumentController {
                 .body(object.asByteArray());
     }
 
-    @GetMapping("/{id}/preview")
+    @GetMapping("/{id:[0-9a-fA-F-]+}/preview")
     public ResponseEntity<byte[]> preview(@PathVariable UUID id) {
         DocumentModerationResponse document = moderationService.detail(id);
         String previewKey = previewService.resolvePreviewObjectKey(
@@ -82,7 +90,7 @@ public class AdminDocumentController {
                 .body(object.asByteArray());
     }
 
-    @PostMapping("/{id}/moderate")
+    @PostMapping("/{id:[0-9a-fA-F-]+}/moderate")
     public ApiResponse<Void> moderate(
             @PathVariable UUID id,
             @Valid @RequestBody DocumentModerationRequest request) {

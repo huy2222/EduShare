@@ -10,6 +10,7 @@ import {
   getRoles,
   getUsers,
   getModerationDocuments,
+  getModerationStats,
   getModerationDocument,
   getModerationDocumentPreview,
   moderateDocument,
@@ -686,6 +687,7 @@ const normalizeModerationDocument = (item) => ({
 
 function DocumentModeration() {
   const [documents, setDocuments] = useState([])
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
@@ -697,6 +699,10 @@ function DocumentModeration() {
   const [notice, setNotice] = useState('')
   const [detail, setDetail] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [rejectRequest, setRejectRequest] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectError, setRejectError] = useState('')
+  const [moderating, setModerating] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -722,10 +728,11 @@ function DocumentModeration() {
   useEffect(() => {
     let active = true
     setLoading(true)
-    getModerationDocuments()
-      .then((response) => {
+    Promise.all([getModerationDocuments(), getModerationStats()])
+      .then(([response, statsResponse]) => {
         if (active) {
           setDocuments((response.result?.items || []).map(normalizeModerationDocument))
+          setStats(statsResponse.result)
           setError('')
         }
       })
@@ -750,8 +757,8 @@ function DocumentModeration() {
     (document) => document.status === 'PENDING' && document.scan === 'CLEAN',
   )
   const allSelected = selectable.length > 0 && selectable.every((item) => selected.includes(item.id))
-  const pendingCount = documents.filter((item) => item.status === 'PENDING').length
-  const cleanCount = documents.filter((item) => item.scan === 'CLEAN').length
+  const pendingCount = stats?.pending
+  const formatStat = (value) => value == null ? '—' : value.toLocaleString('vi-VN')
 
   const toggleSelected = (id) =>
     setSelected((current) =>
@@ -760,15 +767,38 @@ function DocumentModeration() {
 
   const updateStatus = async (ids, status, reason = '') => {
     if (!ids.length) return
+    setModerating(true)
     try {
       await Promise.all(ids.map((id) => moderateDocument(id, status, reason)))
       setSelected([])
       setDetail(null)
+      setRejectRequest(null)
+      setRejectReason('')
+      setRejectError('')
       setNotice(status === 'APPROVED' ? 'Đã duyệt tài liệu đã chọn.' : 'Đã từ chối tài liệu đã chọn.')
       setReload((value) => value + 1)
     } catch (requestError) {
       setError(requestError.message)
+    } finally {
+      setModerating(false)
     }
+  }
+
+  const openRejectDialog = (ids, label) => {
+    if (!ids.length) return
+    setRejectReason('')
+    setRejectError('')
+    setRejectRequest({ ids, label })
+  }
+
+  const submitRejection = (event) => {
+    event.preventDefault()
+    const reason = rejectReason.trim()
+    if (!reason) {
+      setRejectError('Vui lòng nhập lý do từ chối tài liệu.')
+      return
+    }
+    updateStatus(rejectRequest.ids, 'REJECTED', reason)
   }
 
   return (
@@ -777,43 +807,47 @@ function DocumentModeration() {
         <span><i className="admin-status-dot" /> Hệ thống ClamAV 1.2: Đang trực tuyến</span>
       </div>
       <div className="admin-moderation-stats">
-        <article><div><small>Chờ phê duyệt</small><strong>{pendingCount}</strong></div><span>▣</span></article>
-        <article><div><small>Đã duyệt hôm nay</small><strong className="is-blue">38</strong></div><span>✓</span></article>
-        <article><div><small>Từ chối hôm nay</small><strong className="is-red">3</strong></div><span>×</span></article>
-        <article><div><small>Tổng tài liệu</small><strong>4,820</strong></div><span>▤</span></article>
+        <article><div><small>Chờ phê duyệt</small><strong>{formatStat(stats?.pending)}</strong></div><span>▣</span></article>
+        <article><div><small>Đã duyệt hôm nay</small><strong className="is-blue">{formatStat(stats?.approvedToday)}</strong></div><span>✓</span></article>
+        <article><div><small>Từ chối hôm nay</small><strong className="is-red">{formatStat(stats?.rejectedToday)}</strong></div><span>×</span></article>
+        <article><div><small>Tổng tài liệu</small><strong>{formatStat(stats?.total)}</strong></div><span>▤</span></article>
       </div>
       <section className="admin-moderation-panel">
         <div className="admin-moderation-toolbar">
-          <label className="admin-moderation-search">
-            <Icon name="search" />
-            <input
-              aria-label="Tìm kiếm tài liệu, người tải"
-              placeholder="Tìm kiếm tên tài liệu, người tải…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          <select aria-label="Lọc trạng thái tài liệu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="">Tất cả trạng thái</option>
-            <option value="PENDING">Chờ phê duyệt ({pendingCount})</option>
-            <option value="APPROVED">Đã duyệt</option>
-            <option value="REJECTED">Bị chặn</option>
-          </select>
-          <select aria-label="Lọc định dạng" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-            <option value="">Tất cả định dạng</option>
-            <option value="pdf">PDF</option>
-            <option value="doc">DOCX</option>
-            <option value="ppt">PPTX</option>
-          </select>
-          <select aria-label="Lọc quét virus" value={scanFilter} onChange={(event) => setScanFilter(event.target.value)}>
-            <option value="">Quét virus: Tất cả</option>
-            <option value="CLEAN">An toàn</option>
-            <option value="INFECTED">Mã độc</option>
-            <option value="PENDING">Chưa quét</option>
-          </select>
-          <span className="admin-selected-count">Đã chọn {selected.length}</span>
-          <button type="button" onClick={() => updateStatus(selected, 'REJECTED')} disabled={!selected.length}>Từ chối loạt</button>
-          <button className="admin-primary" type="button" onClick={() => updateStatus(selected, 'APPROVED')} disabled={!selected.length}>Duyệt đã chọn</button>
+          <div className="admin-moderation-filters">
+            <label className="admin-moderation-search">
+              <Icon name="search" />
+              <input
+                aria-label="Tìm kiếm tài liệu, người tải"
+                placeholder="Tìm kiếm tên tài liệu, người tải…"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <select aria-label="Lọc trạng thái tài liệu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="">Tất cả trạng thái</option>
+              <option value="PENDING">Chờ phê duyệt ({formatStat(pendingCount)})</option>
+              <option value="APPROVED">Đã duyệt</option>
+              <option value="REJECTED">Bị chặn</option>
+            </select>
+            <select aria-label="Lọc định dạng" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+              <option value="">Tất cả định dạng</option>
+              <option value="pdf">PDF</option>
+              <option value="doc">DOCX</option>
+              <option value="ppt">PPTX</option>
+            </select>
+            <select aria-label="Lọc quét virus" value={scanFilter} onChange={(event) => setScanFilter(event.target.value)}>
+              <option value="">Quét virus: Tất cả</option>
+              <option value="CLEAN">An toàn</option>
+              <option value="INFECTED">Mã độc</option>
+              <option value="PENDING">Chưa quét</option>
+            </select>
+          </div>
+          <div className="admin-moderation-bulk-actions">
+            <span className="admin-selected-count">{selected.length ? `Đã chọn ${selected.length}` : 'Chưa chọn tài liệu'}</span>
+            <button type="button" onClick={() => openRejectDialog(selected, `${selected.length} tài liệu đã chọn`)} disabled={!selected.length}>Từ chối</button>
+            <button className="admin-primary" type="button" onClick={() => updateStatus(selected, 'APPROVED')} disabled={!selected.length || moderating}>Duyệt đã chọn</button>
+          </div>
         </div>
         {notice && <p className="admin-success" role="status">{notice}</p>}
         {error && <p className="admin-error" role="alert">{error} <button type="button" onClick={() => setReload((value) => value + 1)}>Thử lại</button></p>}
@@ -880,9 +914,40 @@ function DocumentModeration() {
                 <section className="moderation-scan-card"><strong>♧ &nbsp;An toàn (ClamAV Clean)</strong><span>Không phát hiện mã độc</span><b>✓</b></section>
               </aside>
             </div>
-            <footer className="moderation-review-bar"><div><span className={`moderation-file-icon ${detail.type}`}>▤</span><b>{detail.title}</b><span className={`moderation-pill status-${detail.status.toLowerCase()}`}>{detail.status === 'APPROVED' ? '● Đã duyệt' : detail.status === 'REJECTED' ? '● Bị chặn' : '● Sẵn sàng duyệt'}</span></div><div><button type="button" className="moderation-reject-button" onClick={() => updateStatus([detail.id], 'REJECTED', 'Tài liệu không đạt yêu cầu kiểm duyệt.')}>× &nbsp;Từ chối</button><button type="button" className="admin-primary moderation-approve-button" onClick={() => updateStatus([detail.id], 'APPROVED')}>✓ &nbsp;Phê duyệt</button></div></footer>
+            <footer className="moderation-review-bar"><div><span className={`moderation-file-icon ${detail.type}`}>▤</span><b>{detail.title}</b><span className={`moderation-pill status-${detail.status.toLowerCase()}`}>{detail.status === 'APPROVED' ? '● Đã duyệt' : detail.status === 'REJECTED' ? '● Bị chặn' : '● Sẵn sàng duyệt'}</span></div><div><button type="button" className="moderation-reject-button" onClick={() => openRejectDialog([detail.id], detail.title)} disabled={detail.status !== 'PENDING' || moderating}>× &nbsp;Từ chối</button><button type="button" className="admin-primary moderation-approve-button" onClick={() => updateStatus([detail.id], 'APPROVED')} disabled={detail.status !== 'PENDING' || detail.scan !== 'CLEAN' || moderating}>✓ &nbsp;Phê duyệt</button></div></footer>
           </section>
         </div>
+      )}
+      {rejectRequest && (
+        <Modal title="Lý do từ chối tài liệu" onClose={() => setRejectRequest(null)} busy={moderating}>
+          <form className="moderation-reject-form" onSubmit={submitRejection}>
+            <p>Bạn đang từ chối <strong>{rejectRequest.label}</strong>. Lý do này sẽ được lưu vào lịch sử kiểm duyệt.</p>
+            <label htmlFor="moderation-reject-reason">Lý do từ chối <span aria-hidden="true">*</span></label>
+            <textarea
+              id="moderation-reject-reason"
+              autoFocus
+              rows="5"
+              maxLength="1000"
+              placeholder="Ví dụ: Nội dung không đúng môn học, tài liệu vi phạm bản quyền…"
+              value={rejectReason}
+              onChange={(event) => {
+                setRejectReason(event.target.value)
+                if (rejectError) setRejectError('')
+              }}
+              aria-describedby="moderation-reject-help moderation-reject-error"
+              aria-invalid={Boolean(rejectError)}
+            />
+            <div className="moderation-reject-meta">
+              <small id="moderation-reject-help">Nhập lý do cụ thể để người tải có thể điều chỉnh tài liệu.</small>
+              <small>{rejectReason.length}/1000</small>
+            </div>
+            {rejectError && <p className="moderation-reject-error" id="moderation-reject-error" role="alert">{rejectError}</p>}
+            <div className="admin-modal-actions">
+              <button type="button" onClick={() => setRejectRequest(null)} disabled={moderating}>Hủy</button>
+              <button type="submit" className="moderation-confirm-reject" disabled={moderating || !rejectReason.trim()}>{moderating ? 'Đang từ chối…' : 'Xác nhận từ chối'}</button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   )
