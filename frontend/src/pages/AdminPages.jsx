@@ -1,10 +1,10 @@
-import { hasPermission, sectionPermissions } from '../services/adminAccess'
-import AdminAccess from '../components/AdminAccess'
-import Catalog from '../components/AdminCatalog'
-import { Modal, Pagination } from '../components/AdminUi'
-import { useEffect, useState } from 'react'
-import { Link, NavLink, Navigate, useParams } from 'react-router-dom'
-import { getCurrentUser } from '../services/authApi'
+import { hasPermission, sectionPermissions } from "../services/adminAccess";
+import AdminAccess from "../components/AdminAccess";
+import Catalog from "../components/AdminCatalog";
+import { Modal, Pagination } from "../components/AdminUi";
+import { useEffect, useState } from "react";
+import { Link, NavLink, Navigate, useParams } from "react-router-dom";
+import { getCurrentUser } from "../services/authApi";
 import {
   getOverview,
   getRoles,
@@ -15,32 +15,32 @@ import {
   getModerationDocumentPreview,
   moderateDocument,
   updateUser,
-} from '../services/adminApi'
-import brandMark from '../assets/brand-mark.svg'
-import '../styles/admin.css'
+} from "../services/adminApi";
+import brandMark from "../assets/brand-mark.svg";
+import "../styles/admin.css";
 
 const sections = {
-  overview: 'Tổng quan',
-  documents: 'Kiểm duyệt tài liệu',
-  users: 'Quản lý người dùng',
-  faculties: 'Khoa & ngành',
-  subjects: 'Quản lý môn học',
-  access: 'Phân quyền & vai trò',
-}
+  overview: "Tổng quan",
+  documents: "Kiểm duyệt tài liệu",
+  users: "Quản lý người dùng",
+  faculties: "Khoa & ngành",
+  subjects: "Quản lý môn học",
+  access: "Phân quyền & vai trò",
+};
 const roleLabel = (role) =>
   ({
-    ADMIN: 'Quản trị viên',
-    USER: 'Người dùng',
-    MODERATOR: 'Kiểm duyệt viên',
-    LECTURER: 'Giảng viên',
-  })[role] || role
+    ADMIN: "Quản trị viên",
+    USER: "Người dùng",
+    MODERATOR: "Kiểm duyệt viên",
+    LECTURER: "Giảng viên",
+  })[role] || role;
 const statuses = {
-  ACTIVE: 'Đang hoạt động',
-  BANNED: 'Đã khoá',
-  INACTIVE: 'Ngừng hoạt động',
-  PENDING_VERIFICATION: 'Chờ xác thực',
-}
-const number = (value) => (value || 0).toLocaleString('vi-VN')
+  ACTIVE: "Đang hoạt động",
+  BANNED: "Đã khoá",
+  INACTIVE: "Ngừng hoạt động",
+  PENDING_VERIFICATION: "Chờ xác thực",
+};
+const number = (value) => (value || 0).toLocaleString("vi-VN");
 
 function Icon({ name }) {
   const paths = {
@@ -87,7 +87,7 @@ function Icon({ name }) {
         <path d="m15 15 6 6" />
       </>
     ),
-  }
+  };
   return (
     <svg
       width="20"
@@ -102,17 +102,17 @@ function Icon({ name }) {
     >
       {paths[name] || paths.subjects}
     </svg>
-  )
+  );
 }
 
 function Stats({ data }) {
   return (
     <div className="admin-stats">
       {[
-        ['users', 'Tổng người dùng'],
-        ['faculties', 'Khoa đào tạo'],
-        ['subjects', 'Môn học'],
-        ['documents', 'Tổng tài liệu'],
+        ["users", "Tổng người dùng"],
+        ["faculties", "Khoa đào tạo"],
+        ["subjects", "Môn học"],
+        ["documents", "Tổng tài liệu"],
       ].map(([key, label]) => (
         <article key={key} className="admin-stat">
           <div>
@@ -126,39 +126,39 @@ function Stats({ data }) {
         </article>
       ))}
     </div>
-  )
+  );
 }
 
 function Overview() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState('')
-  const [retry, setRetry] = useState(0)
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    let active = true
+    let active = true;
     getOverview()
       .then((r) => {
         if (active) {
-          setData(r.result)
-          setError('')
+          setData(r.result);
+          setError("");
         }
       })
       .catch((e) => {
-        if (active) setError(e.message)
-      })
+        if (active) setError(e.message);
+      });
     return () => {
-      active = false
-    }
-  }, [retry])
+      active = false;
+    };
+  }, [retry]);
   if (error)
     return (
       <p role="alert">
         {error} <button onClick={() => setRetry((v) => v + 1)}>Thử lại</button>
       </p>
-    )
-  if (!data) return <p role="status">Đang tải tổng quan…</p>
+    );
+  if (!data) return <p role="status">Đang tải tổng quan…</p>;
   const activePercent = data.users
     ? Math.round((data.activeUsers / data.users) * 100)
-    : 0
+    : 0;
   return (
     <>
       <Stats data={data} />
@@ -199,7 +199,7 @@ function Overview() {
         <section className="admin-panel">
           <h2>Thao tác nhanh</h2>
           <p className="admin-muted">Truy cập các chức năng quản trị.</p>
-          {['users', 'faculties', 'subjects'].map((key) => (
+          {["users", "faculties", "subjects"].map((key) => (
             <Link className="admin-quick-link" key={key} to={`/admin/${key}`}>
               <span className="admin-stat-icon">
                 <Icon name={key} />
@@ -207,11 +207,11 @@ function Overview() {
               <div>
                 <b>{sections[key]}</b>
                 <small>
-                  {key === 'users'
-                    ? 'Phân quyền và trạng thái tài khoản'
-                    : key === 'faculties'
-                      ? 'Quản lý khoa và các ngành trực thuộc'
-                      : 'Thêm và sắp xếp môn học theo khoa'}
+                  {key === "users"
+                    ? "Phân quyền và trạng thái tài khoản"
+                    : key === "faculties"
+                      ? "Quản lý khoa và các ngành trực thuộc"
+                      : "Thêm và sắp xếp môn học theo khoa"}
                 </small>
               </div>
               <span>→</span>
@@ -220,87 +220,87 @@ function Overview() {
         </section>
       </div>
     </>
-  )
+  );
 }
 
 function Users({ currentUser }) {
-  const isAdmin = currentUser.roles?.includes('ADMIN')
+  const isAdmin = currentUser.roles?.includes("ADMIN");
   const canAssign =
-    isAdmin || currentUser.permissions?.includes('USER_ROLE_ASSIGN')
-  const canBan = isAdmin || currentUser.permissions?.includes('USER_BAN')
+    isAdmin || currentUser.permissions?.includes("USER_ROLE_ASSIGN");
+  const canBan = isAdmin || currentUser.permissions?.includes("USER_BAN");
   const [filters, setFilters] = useState({
-    search: '',
-    role: '',
-    status: '',
+    search: "",
+    role: "",
+    status: "",
     page: 0,
-  })
-  const [data, setData] = useState({ content: [], totalElements: 0 })
-  const [roles, setRoles] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [editing, setEditing] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const [modalError, setModalError] = useState('')
-  const [reload, setReload] = useState(0)
+  });
+  const [data, setData] = useState({ content: [], totalElements: 0 });
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [reload, setReload] = useState(0);
   useEffect(() => {
-    let active = true
+    let active = true;
     getRoles()
       .then((r) => {
-        if (active) setRoles(r.result)
+        if (active) setRoles(r.result);
       })
       .catch((e) => {
-        if (active) setError(e.message)
-      })
+        if (active) setError(e.message);
+      });
     return () => {
-      active = false
-    }
-  }, [reload])
+      active = false;
+    };
+  }, [reload]);
   useEffect(() => {
-    let active = true
-    setLoading(true)
+    let active = true;
+    setLoading(true);
     const timer = setTimeout(
       () =>
         getUsers(filters)
           .then((r) => {
             if (active) {
-              setData(r.result)
-              setError('')
+              setData(r.result);
+              setError("");
             }
           })
           .catch((e) => {
-            if (active) setError(e.message)
+            if (active) setError(e.message);
           })
           .finally(() => {
-            if (active) setLoading(false)
+            if (active) setLoading(false);
           }),
       filters.search ? 250 : 0,
-    )
+    );
     return () => {
-      active = false
-      clearTimeout(timer)
-    }
-  }, [filters, reload])
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [filters, reload]);
   const filter = (key, value) =>
-    setFilters((f) => ({ ...f, [key]: value, page: 0 }))
+    setFilters((f) => ({ ...f, [key]: value, page: 0 }));
   const save = async (event) => {
-    event.preventDefault()
-    setBusy(true)
-    setModalError('')
+    event.preventDefault();
+    setBusy(true);
+    setModalError("");
     try {
       await updateUser(editing.id, {
         roles: editing.roles,
         status: editing.status,
-      })
-      setEditing(null)
-      setNotice('Đã cập nhật tài khoản.')
-      setReload((v) => v + 1)
+      });
+      setEditing(null);
+      setNotice("Đã cập nhật tài khoản.");
+      setReload((v) => v + 1);
     } catch (e) {
-      setModalError(e.message)
+      setModalError(e.message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
   return (
     <>
       <div className="admin-toolbar">
@@ -310,13 +310,13 @@ function Users({ currentUser }) {
             aria-label="Tìm người dùng"
             placeholder="Tìm theo tên hoặc email…"
             value={filters.search}
-            onChange={(e) => filter('search', e.target.value)}
+            onChange={(e) => filter("search", e.target.value)}
           />
         </label>
         <select
           aria-label="Lọc vai trò"
           value={filters.role}
-          onChange={(e) => filter('role', e.target.value)}
+          onChange={(e) => filter("role", e.target.value)}
         >
           <option value="">Tất cả vai trò</option>
           {roles.map((r) => (
@@ -328,7 +328,7 @@ function Users({ currentUser }) {
         <select
           aria-label="Lọc trạng thái"
           value={filters.status}
-          onChange={(e) => filter('status', e.target.value)}
+          onChange={(e) => filter("status", e.target.value)}
         >
           <option value="">Tất cả trạng thái</option>
           {Object.entries(statuses).map(([key, label]) => (
@@ -339,7 +339,7 @@ function Users({ currentUser }) {
         </select>
         <button
           onClick={() =>
-            setFilters({ search: '', role: '', status: '', page: 0 })
+            setFilters({ search: "", role: "", status: "", page: 0 })
           }
         >
           Đặt lại
@@ -352,7 +352,7 @@ function Users({ currentUser }) {
       )}
       {error && (
         <p className="admin-error" role="alert">
-          {error}{' '}
+          {error}{" "}
           <button onClick={() => setReload((v) => v + 1)}>Thử lại</button>
         </p>
       )}
@@ -360,7 +360,7 @@ function Users({ currentUser }) {
         <div className="admin-table-title">
           <h2>Danh sách người dùng</h2>
           <span>
-            {loading ? 'Đang tải…' : `${number(data.totalElements)} tài khoản`}
+            {loading ? "Đang tải…" : `${number(data.totalElements)} tài khoản`}
           </span>
         </div>
         <div className="admin-table-scroll">
@@ -393,7 +393,7 @@ function Users({ currentUser }) {
                             .toUpperCase()}
                         </span>
                         <b>
-                          {user.fullName || 'Chưa cập nhật'}
+                          {user.fullName || "Chưa cập nhật"}
                           {user.id === currentUser.id && (
                             <small>Tài khoản của bạn</small>
                           )}
@@ -409,7 +409,7 @@ function Users({ currentUser }) {
                       ))}
                     </td>
                     <td>
-                      {new Date(user.createdAt).toLocaleDateString('vi-VN')}
+                      {new Date(user.createdAt).toLocaleDateString("vi-VN")}
                     </td>
                     <td>
                       <span className={`admin-badge status-${user.status}`}>
@@ -419,8 +419,8 @@ function Users({ currentUser }) {
                     <td>
                       <button
                         onClick={() => {
-                          setEditing({ ...user })
-                          setModalError('')
+                          setEditing({ ...user });
+                          setModalError("");
                         }}
                       >
                         Xem / chỉnh sửa
@@ -454,11 +454,11 @@ function Users({ currentUser }) {
         >
           <form onSubmit={save}>
             <div className="admin-user-details">
-              <b>{editing.fullName || 'Chưa cập nhật tên'}</b>
+              <b>{editing.fullName || "Chưa cập nhật tên"}</b>
               <p>{editing.email}</p>
               <small>
-                Tham gia:{' '}
-                {new Date(editing.createdAt).toLocaleDateString('vi-VN')}
+                Tham gia:{" "}
+                {new Date(editing.createdAt).toLocaleDateString("vi-VN")}
               </small>
             </div>
             <fieldset
@@ -490,7 +490,7 @@ function Users({ currentUser }) {
                   busy ||
                   !canBan ||
                   editing.id === currentUser.id ||
-                  editing.status === 'PENDING_VERIFICATION'
+                  editing.status === "PENDING_VERIFICATION"
                 }
                 value={editing.status}
                 onChange={(e) =>
@@ -500,7 +500,7 @@ function Users({ currentUser }) {
                 {Object.entries(statuses)
                   .filter(
                     ([key]) =>
-                      key !== 'PENDING_VERIFICATION' || editing.status === key,
+                      key !== "PENDING_VERIFICATION" || editing.status === key,
                   )
                   .map(([key, label]) => (
                     <option key={key} value={key}>
@@ -536,19 +536,19 @@ function Users({ currentUser }) {
                   (!canAssign && !canBan)
                 }
               >
-                {busy ? 'Đang lưu…' : 'Lưu thay đổi'}
+                {busy ? "Đang lưu…" : "Lưu thay đổi"}
               </button>
             </div>
           </form>
         </Modal>
       )}
     </>
-  )
+  );
 }
 
 function AcademicManagement({ currentUser }) {
-  const [tab, setTab] = useState('faculties')
-  const [selectedFaculty, setSelectedFaculty] = useState('')
+  const [tab, setTab] = useState("faculties");
+  const [selectedFaculty, setSelectedFaculty] = useState("");
   return (
     <>
       <div
@@ -557,16 +557,16 @@ function AcademicManagement({ currentUser }) {
         aria-label="Danh mục đào tạo"
       >
         <button
-          aria-pressed={tab === 'faculties'}
-          onClick={() => setTab('faculties')}
+          aria-pressed={tab === "faculties"}
+          onClick={() => setTab("faculties")}
         >
           Khoa
         </button>
         <button
-          aria-pressed={tab === 'majors'}
+          aria-pressed={tab === "majors"}
           onClick={() => {
-            setSelectedFaculty('')
-            setTab('majors')
+            setSelectedFaculty("");
+            setTab("majors");
           }}
         >
           Ngành
@@ -578,239 +578,297 @@ function AcademicManagement({ currentUser }) {
         type={tab}
         initialFacultyId={selectedFaculty}
         onViewMajors={(id) => {
-          setSelectedFaculty(id)
-          setTab('majors')
+          setSelectedFaculty(id);
+          setTab("majors");
         }}
       />
     </>
-  )
+  );
 }
 
 const moderationSeed = [
   {
-    id: 'doc-1',
-    title: 'Đề cương & Ngân hàng câu hỏi Lập trình Phần tán 2024.pdf',
-    description: 'Hệ phần tán • K64 CNTT • Giáo trình',
-    uploader: 'Trần Đình Trọng',
-    email: 'trong.td@edushare.edu.vn',
-    time: '10:24, 23/10',
-    size: '4.8 MB (42 trang)',
-    scan: 'CLEAN',
-    status: 'PENDING',
-    type: 'pdf',
+    id: "doc-1",
+    title: "Đề cương & Ngân hàng câu hỏi Lập trình Phần tán 2024.pdf",
+    description: "Hệ phần tán • K64 CNTT • Giáo trình",
+    uploader: "Trần Đình Trọng",
+    email: "trong.td@edushare.edu.vn",
+    time: "10:24, 23/10",
+    size: "4.8 MB (42 trang)",
+    scan: "CLEAN",
+    status: "PENDING",
+    type: "pdf",
   },
   {
-    id: 'doc-2',
-    title: 'Giáo trình Nguyên lý hệ điều hành - Chương 4 & 5.docx',
-    description: 'Hệ điều hành • Khoa CNTT',
-    uploader: 'Lê Hoàng Long',
-    email: 'long.lh@edushare.edu.vn',
-    time: '09:15, 23/10',
-    size: '12.3 MB (85 trang)',
-    scan: 'CLEAN',
-    status: 'PENDING',
-    type: 'doc',
+    id: "doc-2",
+    title: "Giáo trình Nguyên lý hệ điều hành - Chương 4 & 5.docx",
+    description: "Hệ điều hành • Khoa CNTT",
+    uploader: "Lê Hoàng Long",
+    email: "long.lh@edushare.edu.vn",
+    time: "09:15, 23/10",
+    size: "12.3 MB (85 trang)",
+    scan: "CLEAN",
+    status: "PENDING",
+    type: "doc",
   },
   {
-    id: 'doc-3',
-    title: 'Slide Bài giảng Mạng máy tính Cisco CCNA - Crack Tool.pdf',
-    description: 'Phát hiện Trojan.PDF.Phish (Mã hash: 8f9c…a12)',
-    uploader: 'Nguyễn Văn Nam',
-    email: 'nam.nv@edushare.edu.vn',
-    time: '08:42, 23/10',
-    size: '26.5 MB (18 trang)',
-    scan: 'INFECTED',
-    status: 'REJECTED',
-    type: 'pdf',
+    id: "doc-3",
+    title: "Slide Bài giảng Mạng máy tính Cisco CCNA - Crack Tool.pdf",
+    description: "Phát hiện Trojan.PDF.Phish (Mã hash: 8f9c…a12)",
+    uploader: "Nguyễn Văn Nam",
+    email: "nam.nv@edushare.edu.vn",
+    time: "08:42, 23/10",
+    size: "26.5 MB (18 trang)",
+    scan: "INFECTED",
+    status: "REJECTED",
+    type: "pdf",
   },
   {
-    id: 'doc-4',
-    title: 'Thuyết trình Kiến trúc Vi xử lý ARMv8.pptx',
-    description: 'Kiến trúc máy tính • Khoa Điện tử',
-    uploader: 'Phạm Minh Tuấn',
-    email: 'tuan.pm@edushare.edu.vn',
-    time: 'Hôm qua 21:30',
-    size: '45.0 MB (64 slides)',
-    scan: 'PENDING',
-    status: 'PENDING',
-    type: 'ppt',
+    id: "doc-4",
+    title: "Thuyết trình Kiến trúc Vi xử lý ARMv8.pptx",
+    description: "Kiến trúc máy tính • Khoa Điện tử",
+    uploader: "Phạm Minh Tuấn",
+    email: "tuan.pm@edushare.edu.vn",
+    time: "Hôm qua 21:30",
+    size: "45.0 MB (64 slides)",
+    scan: "PENDING",
+    status: "PENDING",
+    type: "ppt",
   },
   {
-    id: 'doc-5',
-    title: 'Bảng tổng hợp dữ liệu thực hành Cơ sở dữ liệu Oracle.xlsx',
-    description: 'Cơ sở dữ liệu • Khoa CNTT',
-    uploader: 'Hoàng Mai Linh',
-    email: 'linh.hm@edushare.edu.vn',
-    time: 'Hôm qua 18:20',
-    size: '2.1 MB (3 sheets)',
-    scan: 'CLEAN',
-    status: 'APPROVED',
-    type: 'sheet',
+    id: "doc-5",
+    title: "Bảng tổng hợp dữ liệu thực hành Cơ sở dữ liệu Oracle.xlsx",
+    description: "Cơ sở dữ liệu • Khoa CNTT",
+    uploader: "Hoàng Mai Linh",
+    email: "linh.hm@edushare.edu.vn",
+    time: "Hôm qua 18:20",
+    size: "2.1 MB (3 sheets)",
+    scan: "CLEAN",
+    status: "APPROVED",
+    type: "sheet",
   },
-]
+];
 
 const moderationStatusLabels = {
-  PENDING: 'Chờ duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Bị chặn',
-}
+  PENDING: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Bị chặn",
+};
+
+const moderationFileTypeLabels = {
+  pdf: "PDF",
+  doc: "Word",
+  docx: "Word",
+  xls: "Excel",
+  xlsx: "Excel",
+  ppt: "PowerPoint",
+  pptx: "PowerPoint",
+  txt: "TXT",
+};
 
 const formatFileSize = (bytes) => {
-  if (!bytes) return '—'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let value = bytes
-  let index = 0
+  if (!bytes) return "—";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let index = 0;
   while (value >= 1024 && index < units.length - 1) {
-    value /= 1024
-    index += 1
+    value /= 1024;
+    index += 1;
   }
-  return `${value.toFixed(index ? 1 : 0)} ${units[index]}`
-}
+  return `${value.toFixed(index ? 1 : 0)} ${units[index]}`;
+};
 
 const normalizeModerationDocument = (item) => ({
   id: item.id,
   title: item.title,
-  description: item.description || `${item.subjectCode || ''} ${item.subjectName || ''}`.trim(),
-  uploader: item.uploaderName || 'Chưa cập nhật',
-  email: item.uploaderEmail || '—',
-  time: item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : '—',
+  description:
+    item.description ||
+    `${item.subjectCode || ""} ${item.subjectName || ""}`.trim(),
+  uploader: item.uploaderName || "Chưa cập nhật",
+  email: item.uploaderEmail || "—",
+  faculty: item.facultyName || "—",
+  major: item.majorName || "—",
+  time: item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : "—",
   size: formatFileSize(item.fileSize),
   scan: item.scanStatus,
   status: item.status,
-  type: (item.fileType || 'file').toLowerCase(),
-  previewStatus: item.previewStatus || 'NOT_REQUIRED',
-  previewError: item.previewError || '',
+  type: (item.fileType || "file").toLowerCase(),
+  previewStatus: item.previewStatus || "NOT_REQUIRED",
+  previewError: item.previewError || "",
   fileName: item.fileName,
   objectKey: item.objectKey,
   raw: item,
-})
+});
 
 function DocumentModeration() {
-  const [documents, setDocuments] = useState([])
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [reload, setReload] = useState(0)
-  const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('PENDING')
-  const [scanFilter, setScanFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
-  const [selected, setSelected] = useState([])
-  const [notice, setNotice] = useState('')
-  const [detail, setDetail] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
-  const [rejectRequest, setRejectRequest] = useState(null)
-  const [rejectReason, setRejectReason] = useState('')
-  const [rejectError, setRejectError] = useState('')
-  const [moderating, setModerating] = useState(false)
+  const [documents, setDocuments] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("PENDING");
+  const [scanFilter, setScanFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [selected, setSelected] = useState([]);
+  const [notice, setNotice] = useState("");
+  const [detail, setDetail] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [rejectRequest, setRejectRequest] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState("");
+  const [moderating, setModerating] = useState(false);
 
   useEffect(() => {
-    let active = true
-    let objectUrl = ''
-    setPreviewUrl('')
-    const canLoadPreview = detail && (
-      detail.type === 'pdf' ||
-      ((detail.type === 'doc' || detail.type === 'docx') && detail.previewStatus === 'AVAILABLE')
-    )
-    if (!canLoadPreview) return undefined
+    let active = true;
+    let objectUrl = "";
+    setPreviewUrl("");
+    const canLoadPreview =
+      detail &&
+      (detail.type === "pdf" ||
+        ((detail.type === "doc" || detail.type === "docx") &&
+          detail.previewStatus === "AVAILABLE"));
+    if (!canLoadPreview) return undefined;
     getModerationDocumentPreview(detail.id)
       .then((blob) => {
-        objectUrl = URL.createObjectURL(blob)
-        if (active) setPreviewUrl(objectUrl)
+        objectUrl = URL.createObjectURL(blob);
+        if (active) setPreviewUrl(objectUrl);
       })
-      .catch((requestError) => active && setError(`Không thể tải bản xem trước: ${requestError.message}`))
+      .catch(
+        (requestError) =>
+          active &&
+          setError(`Không thể tải bản xem trước: ${requestError.message}`),
+      );
     return () => {
-      active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [detail])
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [detail]);
 
   useEffect(() => {
-    let active = true
-    setLoading(true)
+    let active = true;
+    setLoading(true);
     Promise.all([getModerationDocuments(), getModerationStats()])
       .then(([response, statsResponse]) => {
         if (active) {
-          setDocuments((response.result?.items || []).map(normalizeModerationDocument))
-          setStats(statsResponse.result)
-          setError('')
+          setDocuments(
+            (response.result?.items || []).map(normalizeModerationDocument),
+          );
+          setStats(statsResponse.result);
+          setError("");
         }
       })
       .catch((requestError) => active && setError(requestError.message))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
-  }, [reload])
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [reload]);
 
   const visible = documents.filter((document) => {
     const matchesQuery = [document.title, document.uploader, document.email]
-      .join(' ')
-      .toLocaleLowerCase('vi')
-      .includes(query.trim().toLocaleLowerCase('vi'))
+      .join(" ")
+      .toLocaleLowerCase("vi")
+      .includes(query.trim().toLocaleLowerCase("vi"));
     return (
       matchesQuery &&
       (!statusFilter || document.status === statusFilter) &&
       (!scanFilter || document.scan === scanFilter) &&
       (!typeFilter || document.type === typeFilter)
-    )
-  })
+    );
+  });
   const selectable = visible.filter(
-    (document) => document.status === 'PENDING' && document.scan === 'CLEAN',
-  )
-  const allSelected = selectable.length > 0 && selectable.every((item) => selected.includes(item.id))
-  const pendingCount = stats?.pending
-  const formatStat = (value) => value == null ? '—' : value.toLocaleString('vi-VN')
+    (document) => document.status === "PENDING" && document.scan === "CLEAN",
+  );
+  const allSelected =
+    selectable.length > 0 &&
+    selectable.every((item) => selected.includes(item.id));
+  const pendingCount = stats?.pending;
+  const formatStat = (value) =>
+    value == null ? "—" : value.toLocaleString("vi-VN");
 
   const toggleSelected = (id) =>
     setSelected((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
-    )
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
 
-  const updateStatus = async (ids, status, reason = '') => {
-    if (!ids.length) return
-    setModerating(true)
+  const updateStatus = async (ids, status, reason = "") => {
+    if (!ids.length) return;
+    setModerating(true);
     try {
-      await Promise.all(ids.map((id) => moderateDocument(id, status, reason)))
-      setSelected([])
-      setDetail(null)
-      setRejectRequest(null)
-      setRejectReason('')
-      setRejectError('')
-      setNotice(status === 'APPROVED' ? 'Đã duyệt tài liệu đã chọn.' : 'Đã từ chối tài liệu đã chọn.')
-      setReload((value) => value + 1)
+      await Promise.all(ids.map((id) => moderateDocument(id, status, reason)));
+      setSelected([]);
+      setDetail(null);
+      setRejectRequest(null);
+      setRejectReason("");
+      setRejectError("");
+      setNotice(
+        status === "APPROVED"
+          ? "Đã duyệt tài liệu đã chọn."
+          : "Đã từ chối tài liệu đã chọn.",
+      );
+      setReload((value) => value + 1);
     } catch (requestError) {
-      setError(requestError.message)
+      setError(requestError.message);
     } finally {
-      setModerating(false)
+      setModerating(false);
     }
-  }
+  };
 
   const openRejectDialog = (ids, label) => {
-    if (!ids.length) return
-    setRejectReason('')
-    setRejectError('')
-    setRejectRequest({ ids, label })
-  }
+    if (!ids.length) return;
+    setRejectReason("");
+    setRejectError("");
+    setRejectRequest({ ids, label });
+  };
 
   const submitRejection = (event) => {
-    event.preventDefault()
-    const reason = rejectReason.trim()
+    event.preventDefault();
+    const reason = rejectReason.trim();
     if (!reason) {
-      setRejectError('Vui lòng nhập lý do từ chối tài liệu.')
-      return
+      setRejectError("Vui lòng nhập lý do từ chối tài liệu.");
+      return;
     }
-    updateStatus(rejectRequest.ids, 'REJECTED', reason)
-  }
+    updateStatus(rejectRequest.ids, "REJECTED", reason);
+  };
 
   return (
     <div className="admin-moderation">
-      <div className="admin-moderation-topline">
-        <span><i className="admin-status-dot" /> Hệ thống ClamAV 1.2: Đang trực tuyến</span>
-      </div>
       <div className="admin-moderation-stats">
-        <article><div><small>Chờ phê duyệt</small><strong>{formatStat(stats?.pending)}</strong></div><span>▣</span></article>
-        <article><div><small>Đã duyệt hôm nay</small><strong className="is-blue">{formatStat(stats?.approvedToday)}</strong></div><span>✓</span></article>
-        <article><div><small>Từ chối hôm nay</small><strong className="is-red">{formatStat(stats?.rejectedToday)}</strong></div><span>×</span></article>
-        <article><div><small>Tổng tài liệu</small><strong>{formatStat(stats?.total)}</strong></div><span>▤</span></article>
+        <article>
+          <div>
+            <small>Chờ phê duyệt</small>
+            <strong>{formatStat(stats?.pending)}</strong>
+          </div>
+          <span>▣</span>
+        </article>
+        <article>
+          <div>
+            <small>Đã duyệt hôm nay</small>
+            <strong className="is-blue">
+              {formatStat(stats?.approvedToday)}
+            </strong>
+          </div>
+          <span>✓</span>
+        </article>
+        <article>
+          <div>
+            <small>Từ chối hôm nay</small>
+            <strong className="is-red">
+              {formatStat(stats?.rejectedToday)}
+            </strong>
+          </div>
+          <span>×</span>
+        </article>
+        <article>
+          <div>
+            <small>Tổng tài liệu</small>
+            <strong>{formatStat(stats?.total)}</strong>
+          </div>
+          <span>▤</span>
+        </article>
       </div>
       <section className="admin-moderation-panel">
         <div className="admin-moderation-toolbar">
@@ -824,19 +882,38 @@ function DocumentModeration() {
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            <select aria-label="Lọc trạng thái tài liệu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <select
+              aria-label="Lọc trạng thái tài liệu"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
               <option value="">Tất cả trạng thái</option>
-              <option value="PENDING">Chờ phê duyệt ({formatStat(pendingCount)})</option>
+              <option value="PENDING">
+                Chờ phê duyệt ({formatStat(pendingCount)})
+              </option>
               <option value="APPROVED">Đã duyệt</option>
               <option value="REJECTED">Bị chặn</option>
             </select>
-            <select aria-label="Lọc định dạng" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <select
+              aria-label="Lọc định dạng"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+            >
               <option value="">Tất cả định dạng</option>
               <option value="pdf">PDF</option>
-              <option value="doc">DOCX</option>
-              <option value="ppt">PPTX</option>
+              <option value="doc">Word (.doc)</option>
+              <option value="docx">Word (.docx)</option>
+              <option value="xls">Excel (.xls)</option>
+              <option value="xlsx">Excel (.xlsx)</option>
+              <option value="ppt">PowerPoint (.ppt)</option>
+              <option value="pptx">PowerPoint (.pptx)</option>
+              <option value="txt">TXT</option>
             </select>
-            <select aria-label="Lọc quét virus" value={scanFilter} onChange={(event) => setScanFilter(event.target.value)}>
+            <select
+              aria-label="Lọc quét virus"
+              value={scanFilter}
+              onChange={(event) => setScanFilter(event.target.value)}
+            >
               <option value="">Quét virus: Tất cả</option>
               <option value="CLEAN">An toàn</option>
               <option value="INFECTED">Mã độc</option>
@@ -844,85 +921,334 @@ function DocumentModeration() {
             </select>
           </div>
           <div className="admin-moderation-bulk-actions">
-            <span className="admin-selected-count">{selected.length ? `Đã chọn ${selected.length}` : 'Chưa chọn tài liệu'}</span>
-            <button type="button" onClick={() => openRejectDialog(selected, `${selected.length} tài liệu đã chọn`)} disabled={!selected.length}>Từ chối</button>
-            <button className="admin-primary" type="button" onClick={() => updateStatus(selected, 'APPROVED')} disabled={!selected.length || moderating}>Duyệt đã chọn</button>
+            <span className="admin-selected-count">
+              {selected.length
+                ? `Đã chọn ${selected.length}`
+                : "Chưa chọn tài liệu"}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                openRejectDialog(
+                  selected,
+                  `${selected.length} tài liệu đã chọn`,
+                )
+              }
+              disabled={!selected.length}
+            >
+              Từ chối
+            </button>
+            <button
+              className="admin-primary"
+              type="button"
+              onClick={() => updateStatus(selected, "APPROVED")}
+              disabled={!selected.length || moderating}
+            >
+              Duyệt đã chọn
+            </button>
           </div>
         </div>
-        {notice && <p className="admin-success" role="status">{notice}</p>}
-        {error && <p className="admin-error" role="alert">{error} <button type="button" onClick={() => setReload((value) => value + 1)}>Thử lại</button></p>}
+        {notice && (
+          <p className="admin-success" role="status">
+            {notice}
+          </p>
+        )}
+        {error && (
+          <p className="admin-error" role="alert">
+            {error}{" "}
+            <button
+              type="button"
+              onClick={() => setReload((value) => value + 1)}
+            >
+              Thử lại
+            </button>
+          </p>
+        )}
         <div className="admin-moderation-table-scroll">
           <table className="admin-moderation-table">
-            <thead><tr>
-              <th><input aria-label="Chọn tất cả tài liệu an toàn" type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectable.map((item) => item.id))} /></th>
-              <th>TÀI LIỆU</th><th>NGƯỜI TẢI</th><th>THỜI GIAN</th><th>DUNG LƯỢNG</th><th>QUÉT VIRUS</th><th>TRẠNG THÁI</th><th>THAO TÁC</th>
-            </tr></thead>
-            <tbody>
-              {loading ? <tr><td colSpan="8" className="admin-empty">Đang tải tài liệu chờ duyệt…</td></tr> : visible.length ? visible.map((document) => {
-                const canApprove = document.status === 'PENDING' && document.scan === 'CLEAN'
-                return <tr key={document.id} className={document.scan === 'INFECTED' ? 'is-infected' : ''}>
-                  <td><input aria-label={`Chọn ${document.title}`} type="checkbox" checked={selected.includes(document.id)} disabled={!canApprove} onChange={() => toggleSelected(document.id)} /></td>
-                  <td><div className="moderation-document"><span className={`moderation-file-icon ${document.type}`}>▤</span><div><b>{document.title}</b><small>{document.description}</small></div></div></td>
-                  <td><div className="moderation-uploader"><b>{document.uploader}</b><small>{document.email}</small></div></td>
-                  <td>{document.time}</td><td>{document.size}</td>
-                  <td><span className={`moderation-pill scan-${document.scan.toLowerCase()}`}>{document.scan === 'CLEAN' ? '◉ An toàn' : document.scan === 'INFECTED' ? '⊗ Mã độc' : '◌ Lỗi quét'}</span></td>
-                  <td><span className={`moderation-pill status-${document.status.toLowerCase()}`}>{moderationStatusLabels[document.status]}</span></td>
-                  <td><button className="moderation-action" type="button" onClick={async () => {
-                    try {
-                      const response = await getModerationDocument(document.id)
-                      setDetail(normalizeModerationDocument(response.result))
-                    } catch (requestError) {
-                      setError(requestError.message)
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    aria-label="Chọn tất cả tài liệu an toàn"
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={() =>
+                      setSelected(
+                        allSelected ? [] : selectable.map((item) => item.id),
+                      )
                     }
-                  }}>{canApprove ? 'Kiểm duyệt' : 'Chi tiết'}</button></td>
+                  />
+                </th>
+                <th>TÀI LIỆU</th>
+                <th>NGƯỜI TẢI</th>
+                <th>KHOA</th>
+                <th>NGÀNH</th>
+                <th>THỜI GIAN</th>
+                <th>DUNG LƯỢNG</th>
+                <th>TRẠNG THÁI</th>
+                <th>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="9" className="admin-empty">
+                    Đang tải tài liệu chờ duyệt…
+                  </td>
                 </tr>
-              }) : <tr><td colSpan="8" className="admin-empty">Không tìm thấy tài liệu phù hợp.</td></tr>}
+              ) : visible.length ? (
+                visible.map((document) => {
+                  const canApprove =
+                    document.status === "PENDING" && document.scan === "CLEAN";
+                  return (
+                    <tr
+                      key={document.id}
+                      className={
+                        document.scan === "INFECTED" ? "is-infected" : ""
+                      }
+                    >
+                      <td>
+                        <input
+                          aria-label={`Chọn ${document.title}`}
+                          type="checkbox"
+                          checked={selected.includes(document.id)}
+                          disabled={!canApprove}
+                          onChange={() => toggleSelected(document.id)}
+                        />
+                      </td>
+                      <td>
+                        <div className="moderation-document">
+                          <span
+                            className={`moderation-file-type-badge ${document.type}`}
+                          >
+                            {moderationFileTypeLabels[document.type] ||
+                              document.type.toUpperCase()}
+                          </span>
+                          <b>{document.title}</b>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="moderation-uploader">
+                          <b>{document.uploader}</b>
+                          <small>{document.email}</small>
+                        </div>
+                      </td>
+                      <td className="moderation-academic-cell">
+                        {document.faculty}
+                      </td>
+                      <td className="moderation-academic-cell">
+                        {document.major}
+                      </td>
+                      <td>{document.time}</td>
+                      <td>{document.size}</td>
+                      <td>
+                        <span
+                          className={`moderation-pill status-${document.status.toLowerCase()}`}
+                        >
+                          {moderationStatusLabels[document.status]}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="moderation-action"
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const response = await getModerationDocument(
+                                document.id,
+                              );
+                              setDetail(
+                                normalizeModerationDocument(response.result),
+                              );
+                            } catch (requestError) {
+                              setError(requestError.message);
+                            }
+                          }}
+                        >
+                          {canApprove ? "Kiểm duyệt" : "Chi tiết"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="9" className="admin-empty">
+                    Không tìm thấy tài liệu phù hợp.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
         <div className="admin-moderation-footer">
-          <span>Đang hiển thị {visible.length} / {documents.length} tài liệu</span>
+          <span>
+            Đang hiển thị {visible.length} / {documents.length} tài liệu
+          </span>
           <span>Trang 1 / 1</span>
         </div>
       </section>
       {detail && (
         <div className="moderation-detail-backdrop" role="presentation">
-          <section className="moderation-detail-screen" role="dialog" aria-modal="true" aria-labelledby="moderation-detail-title">
+          <section
+            className="moderation-detail-screen"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="moderation-detail-title"
+          >
             <header className="moderation-detail-header">
-              <button type="button" className="moderation-back-button" onClick={() => setDetail(null)}>← Quay lại danh sách</button>
+              <button
+                type="button"
+                className="moderation-back-button"
+                onClick={() => setDetail(null)}
+              >
+                ← Quay lại danh sách
+              </button>
               <span className="moderation-detail-divider">/</span>
               <h2 id="moderation-detail-title">{detail.title}</h2>
-              <span className={`moderation-pill status-${detail.status.toLowerCase()}`}>{detail.status === 'APPROVED' ? '● Đã duyệt' : detail.status === 'REJECTED' ? '● Bị chặn' : '● Chờ duyệt'}</span>
-              <button type="button" className="moderation-close-button" aria-label="Đóng chi tiết" onClick={() => setDetail(null)}>×</button>
+              <span
+                className={`moderation-pill status-${detail.status.toLowerCase()}`}
+              >
+                {detail.status === "APPROVED"
+                  ? "● Đã duyệt"
+                  : detail.status === "REJECTED"
+                    ? "● Bị chặn"
+                    : "● Chờ duyệt"}
+              </span>
+              <button
+                type="button"
+                className="moderation-close-button"
+                aria-label="Đóng chi tiết"
+                onClick={() => setDetail(null)}
+              >
+                ×
+              </button>
             </header>
             <div className="moderation-detail-body">
               <main className="moderation-document-viewer">
-                
                 <div className="moderation-viewer-canvas">
-                  {detail.type === 'pdf' || ((detail.type === 'doc' || detail.type === 'docx') && detail.previewStatus === 'AVAILABLE')
-                    ? (previewUrl ? <iframe title={`Xem trước ${detail.title}`} src={previewUrl} /> : <div className="moderation-preview-placeholder"><span>…</span><b>Đang tải bản xem trước…</b><small>Đang lấy bản PDF an toàn từ Cloudflare R2.</small></div>)
-                    : detail.previewStatus === 'PENDING' || detail.previewStatus === 'CONVERTING'
-                      ? <div className="moderation-preview-placeholder"><span>…</span><b>Đang tạo bản xem trước PDF</b><small>LibreOffice đang chuyển đổi tệp Word sau khi quét virus.</small></div>
-                      : detail.previewStatus === 'FAILED'
-                        ? <div className="moderation-preview-placeholder"><span>!</span><b>Chưa tạo được bản xem trước</b><small>{detail.previewError || 'Vui lòng tải tệp gốc để kiểm tra.'}</small></div>
-                        : <div className="moderation-preview-placeholder"><span>▤</span><b>{detail.fileName}</b><small>Định dạng này chưa có chế độ xem trước trong trình duyệt.</small></div>}
+                  {detail.type === "pdf" ||
+                  ((detail.type === "doc" || detail.type === "docx") &&
+                    detail.previewStatus === "AVAILABLE") ? (
+                    previewUrl ? (
+                      <iframe
+                        title={`Xem trước ${detail.title}`}
+                        src={previewUrl}
+                      />
+                    ) : (
+                      <div className="moderation-preview-placeholder">
+                        <span>…</span>
+                        <b>Đang tải bản xem trước…</b>
+                        <small>
+                          Đang lấy bản PDF an toàn từ Cloudflare R2.
+                        </small>
+                      </div>
+                    )
+                  ) : detail.previewStatus === "PENDING" ||
+                    detail.previewStatus === "CONVERTING" ? (
+                    <div className="moderation-preview-placeholder">
+                      <span>…</span>
+                      <b>Đang tạo bản xem trước PDF</b>
+                      <small>
+                        LibreOffice đang chuyển đổi tệp Word sau khi quét virus.
+                      </small>
+                    </div>
+                  ) : detail.previewStatus === "FAILED" ? (
+                    <div className="moderation-preview-placeholder">
+                      <span>!</span>
+                      <b>Chưa tạo được bản xem trước</b>
+                      <small>
+                        {detail.previewError ||
+                          "Vui lòng tải tệp gốc để kiểm tra."}
+                      </small>
+                    </div>
+                  ) : (
+                    <div className="moderation-preview-placeholder">
+                      <span>▤</span>
+                      <b>{detail.fileName}</b>
+                      <small>
+                        Định dạng này chưa có chế độ xem trước trong trình
+                        duyệt.
+                      </small>
+                    </div>
+                  )}
                 </div>
               </main>
               <aside className="moderation-info-column">
-                <section className="moderation-info-card"><h3>▣ &nbsp;Thông tin tệp</h3><dl><dt>Tên tệp</dt><dd>{detail.fileName}</dd><dt>Định dạng</dt><dd><span className="moderation-file-type">▤ {detail.type.toUpperCase()}</span></dd><dt>Dung lượng</dt><dd>{detail.size}</dd><dt>Môn học</dt><dd>{detail.raw?.subjectCode} · {detail.raw?.subjectName}</dd><dt>Ngày tải</dt><dd>{detail.time}</dd></dl></section>
-                <section className="moderation-info-card"><h3>♙ &nbsp;Người tải lên</h3><dl><dt>Họ và tên</dt><dd>{detail.uploader}</dd><dt>Email</dt><dd>{detail.email}</dd><dt>Khoa / lớp</dt><dd>{detail.raw?.facultyName || '—'}</dd></dl></section>
-                <section className="moderation-scan-card"><strong>♧ &nbsp;An toàn (ClamAV Clean)</strong><span>Không phát hiện mã độc</span><b>✓</b></section>
+                <section className="moderation-info-card">
+                  <h3>▣ &nbsp;Thông tin tệp</h3>
+                  <dl>
+                    <dt>Tên tệp</dt>
+                    <dd>{detail.fileName}</dd>
+                    <dt>Định dạng</dt>
+                    <dd>
+                      <span className="moderation-file-type">
+                        ▤ {detail.type.toUpperCase()}
+                      </span>
+                    </dd>
+                    <dt>Dung lượng</dt>
+                    <dd>{detail.size}</dd>
+                    <dt>Môn học</dt>
+                    <dd>
+                      {detail.raw?.subjectCode} · {detail.raw?.subjectName}
+                    </dd>
+                    <dt>Ngày tải</dt>
+                    <dd>{detail.time}</dd>
+                  </dl>
+                </section>
+                <section className="moderation-info-card">
+                  <h3>♙ &nbsp;Người tải lên</h3>
+                  <dl>
+                    <dt>Họ và tên</dt>
+                    <dd>{detail.uploader}</dd>
+                    <dt>Email</dt>
+                    <dd>{detail.email}</dd>
+                    <dt>Khoa / lớp</dt>
+                    <dd>{detail.raw?.facultyName || "—"}</dd>
+                  </dl>
+                </section>
+                <section className="moderation-info-actions" aria-label="Thao tác kiểm duyệt">
+                  <button
+                    type="button"
+                    className="moderation-reject-button"
+                    onClick={() => openRejectDialog([detail.id], detail.title)}
+                    disabled={detail.status !== "PENDING" || moderating}
+                  >
+                    Từ chối
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-primary moderation-approve-button"
+                    onClick={() => updateStatus([detail.id], "APPROVED")}
+                    disabled={
+                      detail.status !== "PENDING" ||
+                      detail.scan !== "CLEAN" ||
+                      moderating
+                    }
+                  >
+                    Phê duyệt
+                  </button>
+                </section>
               </aside>
             </div>
-            <footer className="moderation-review-bar"><div><span className={`moderation-file-icon ${detail.type}`}>▤</span><b>{detail.title}</b><span className={`moderation-pill status-${detail.status.toLowerCase()}`}>{detail.status === 'APPROVED' ? '● Đã duyệt' : detail.status === 'REJECTED' ? '● Bị chặn' : '● Sẵn sàng duyệt'}</span></div><div><button type="button" className="moderation-reject-button" onClick={() => openRejectDialog([detail.id], detail.title)} disabled={detail.status !== 'PENDING' || moderating}>× &nbsp;Từ chối</button><button type="button" className="admin-primary moderation-approve-button" onClick={() => updateStatus([detail.id], 'APPROVED')} disabled={detail.status !== 'PENDING' || detail.scan !== 'CLEAN' || moderating}>✓ &nbsp;Phê duyệt</button></div></footer>
           </section>
         </div>
       )}
       {rejectRequest && (
-        <Modal title="Lý do từ chối tài liệu" onClose={() => setRejectRequest(null)} busy={moderating}>
+        <Modal
+          title="Lý do từ chối tài liệu"
+          onClose={() => setRejectRequest(null)}
+          busy={moderating}
+        >
           <form className="moderation-reject-form" onSubmit={submitRejection}>
-            <p>Bạn đang từ chối <strong>{rejectRequest.label}</strong>. Lý do này sẽ được lưu vào lịch sử kiểm duyệt.</p>
-            <label htmlFor="moderation-reject-reason">Lý do từ chối <span aria-hidden="true">*</span></label>
+            <p>
+              Bạn đang từ chối <strong>{rejectRequest.label}</strong>. Lý do này
+              sẽ được lưu vào lịch sử kiểm duyệt.
+            </p>
+            <label htmlFor="moderation-reject-reason">
+              Lý do từ chối <span aria-hidden="true">*</span>
+            </label>
             <textarea
               id="moderation-reject-reason"
               autoFocus
@@ -931,26 +1257,48 @@ function DocumentModeration() {
               placeholder="Ví dụ: Nội dung không đúng môn học, tài liệu vi phạm bản quyền…"
               value={rejectReason}
               onChange={(event) => {
-                setRejectReason(event.target.value)
-                if (rejectError) setRejectError('')
+                setRejectReason(event.target.value);
+                if (rejectError) setRejectError("");
               }}
               aria-describedby="moderation-reject-help moderation-reject-error"
               aria-invalid={Boolean(rejectError)}
             />
             <div className="moderation-reject-meta">
-              <small id="moderation-reject-help">Nhập lý do cụ thể để người tải có thể điều chỉnh tài liệu.</small>
+              <small id="moderation-reject-help">
+                Nhập lý do cụ thể để người tải có thể điều chỉnh tài liệu.
+              </small>
               <small>{rejectReason.length}/1000</small>
             </div>
-            {rejectError && <p className="moderation-reject-error" id="moderation-reject-error" role="alert">{rejectError}</p>}
+            {rejectError && (
+              <p
+                className="moderation-reject-error"
+                id="moderation-reject-error"
+                role="alert"
+              >
+                {rejectError}
+              </p>
+            )}
             <div className="admin-modal-actions">
-              <button type="button" onClick={() => setRejectRequest(null)} disabled={moderating}>Hủy</button>
-              <button type="submit" className="moderation-confirm-reject" disabled={moderating || !rejectReason.trim()}>{moderating ? 'Đang từ chối…' : 'Xác nhận từ chối'}</button>
+              <button
+                type="button"
+                onClick={() => setRejectRequest(null)}
+                disabled={moderating}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="moderation-confirm-reject"
+                disabled={moderating || !rejectReason.trim()}
+              >
+                {moderating ? "Đang từ chối…" : "Xác nhận từ chối"}
+              </button>
             </div>
           </form>
         </Modal>
       )}
     </div>
-  )
+  );
 }
 
 export default function AdminPages({
@@ -958,60 +1306,60 @@ export default function AdminPages({
   currentUser,
   authLoading = false,
 }) {
-  const { section = 'overview' } = useParams()
-  const [user, setUser] = useState(currentUser || null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const { section = "overview" } = useParams();
+  const [user, setUser] = useState(currentUser || null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   useEffect(() => {
     if (currentUser !== undefined) {
-      setUser(currentUser)
-      setLoading(authLoading)
-      setError(!authLoading && !currentUser ? 'login' : '')
-      return
+      setUser(currentUser);
+      setLoading(authLoading);
+      setError(!authLoading && !currentUser ? "login" : "");
+      return;
     }
-    let active = true
+    let active = true;
     getCurrentUser()
       .then((r) => {
-        if (active) setUser(r.result)
+        if (active) setUser(r.result);
       })
       .catch((e) => {
-        if (active) setError(e.status === 401 ? 'login' : e.message)
+        if (active) setError(e.status === 401 ? "login" : e.message);
       })
       .finally(() => {
-        if (active) setLoading(false)
-      })
+        if (active) setLoading(false);
+      });
     return () => {
-      active = false
-    }
-  }, [currentUser, authLoading])
+      active = false;
+    };
+  }, [currentUser, authLoading]);
   if (loading)
     return (
       <main className="admin-access" role="status">
         Đang kiểm tra quyền truy cập…
       </main>
-    )
-  if (error === 'login') return <Navigate to="/login" replace />
-  const isAdmin = user?.roles?.includes('ADMIN')
+    );
+  if (error === "login") return <Navigate to="/login" replace />;
+  const isAdmin = user?.roles?.includes("ADMIN");
   const allowed = (key) =>
-    hasPermission(user, ...(sectionPermissions[key] || []))
-  const visible = Object.entries(sections).filter(([key]) => allowed(key))
+    hasPermission(user, ...(sectionPermissions[key] || []));
+  const visible = Object.entries(sections).filter(([key]) => allowed(key));
   if (error || !visible.length)
     return (
       <main className="admin-access">
-        <h1>{error || 'Bạn không có quyền quản trị'}</h1>
+        <h1>{error || "Bạn không có quyền quản trị"}</h1>
         <Link to="/">Về trang chủ</Link>
       </main>
-    )
+    );
   if (!sections[section] || !allowed(section))
     return (
       <Navigate
-        to={visible[0][0] === 'overview' ? '/admin' : '/admin/' + visible[0][0]}
+        to={visible[0][0] === "overview" ? "/admin" : "/admin/" + visible[0][0]}
         replace
       />
-    )
+    );
   return (
-    <div className={`admin-app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+    <div className={`admin-app${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/admin">
           <img src={brandMark} alt="" />
@@ -1021,8 +1369,8 @@ export default function AdminPages({
         <nav aria-label="Quản trị">
           {visible.map(([key, label]) => (
             <NavLink
-              end={key === 'overview'}
-              to={key === 'overview' ? '/admin' : `/admin/${key}`}
+              end={key === "overview"}
+              to={key === "overview" ? "/admin" : `/admin/${key}`}
               key={key}
             >
               <Icon name={key} />
@@ -1043,51 +1391,55 @@ export default function AdminPages({
           <button
             type="button"
             className="admin-sidebar-toggle"
-            aria-label={sidebarCollapsed ? 'Mở thanh điều hướng' : 'Ẩn thanh điều hướng'}
-            title={sidebarCollapsed ? 'Mở thanh điều hướng' : 'Ẩn thanh điều hướng'}
+            aria-label={
+              sidebarCollapsed ? "Mở thanh điều hướng" : "Ẩn thanh điều hướng"
+            }
+            title={
+              sidebarCollapsed ? "Mở thanh điều hướng" : "Ẩn thanh điều hướng"
+            }
             onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
           >
-            {sidebarCollapsed ? '☰' : '←'}
+            {sidebarCollapsed ? "☰" : "←"}
           </button>
           <span>Admin Workspace</span>
           <div>
             <span className="admin-avatar">
-              {(user.fullName || 'A').slice(0, 1)}
+              {(user.fullName || "A").slice(0, 1)}
             </span>
             <div>
-              <b>{user.fullName || 'Quản trị viên'}</b>
+              <b>{user.fullName || "Quản trị viên"}</b>
               <small>Quản trị hệ thống</small>
             </div>
           </div>
         </header>
         <main className="admin-main">
           <div className="admin-heading">
-            <p>QUẢN TRỊ / {sections[section].toLocaleUpperCase('vi')}</p>
+            <p>QUẢN TRỊ / {sections[section].toLocaleUpperCase("vi")}</p>
             <h1>{sections[section]}</h1>
             <span>
-              {section === 'overview'
-                ? 'Chào mừng trở lại! Cùng theo dõi hệ thống EduShare.'
-                : section === 'users'
-                  ? 'Quản lý tài khoản, vai trò và quyền truy cập hệ thống.'
-                  : section === 'access'
-                    ? 'Quản lý vai trò, cấu hình quyền và phân quyền người dùng.'
-                  : section === 'documents'
-                    ? 'Kiểm tra an toàn tệp tin và phê duyệt tài liệu trước khi xuất bản.'
-                    : 'Quản lý danh mục đào tạo và tổ chức tài liệu học tập.'}
+              {section === "overview"
+                ? "Chào mừng trở lại! Cùng theo dõi hệ thống EduShare."
+                : section === "users"
+                  ? "Quản lý tài khoản, vai trò và quyền truy cập hệ thống."
+                  : section === "access"
+                    ? "Quản lý vai trò, cấu hình quyền và phân quyền người dùng."
+                    : section === "documents"
+                      ? "Kiểm tra an toàn tệp tin và phê duyệt tài liệu trước khi xuất bản."
+                      : "Quản lý danh mục đào tạo và tổ chức tài liệu học tập."}
             </span>
           </div>
-          {section === 'overview' ? (
+          {section === "overview" ? (
             <Overview />
-          ) : section === 'documents' ? (
+          ) : section === "documents" ? (
             <DocumentModeration />
-          ) : section === 'users' ? (
+          ) : section === "users" ? (
             <Users currentUser={user} />
-          ) : section === 'access' ? (
+          ) : section === "access" ? (
             <AdminAccess
               currentUser={user}
               renderUsers={() => <Users currentUser={user} />}
             />
-          ) : section === 'faculties' ? (
+          ) : section === "faculties" ? (
             <AcademicManagement currentUser={user} />
           ) : (
             <Catalog key={section} type={section} currentUser={user} />
@@ -1098,5 +1450,5 @@ export default function AdminPages({
         </main>
       </div>
     </div>
-  )
+  );
 }

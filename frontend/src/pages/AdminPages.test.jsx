@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminPages from './AdminPages'
@@ -288,11 +288,14 @@ describe('Admin workspace', () => {
     const document = {
       id: 'doc-1',
       title: 'Giáo trình kiểm thử',
+      description: 'Mô tả không được hiển thị trong danh sách',
       fileName: 'giao-trinh.txt',
       fileType: 'TXT',
       fileSize: 1024,
       uploaderName: 'Nguyễn An',
       uploaderEmail: 'an@example.com',
+      facultyName: 'Khoa Công nghệ Thông tin',
+      majorName: 'Kỹ thuật phần mềm',
       scanStatus: 'CLEAN',
       status: 'PENDING',
       previewStatus: 'NOT_REQUIRED',
@@ -304,10 +307,20 @@ describe('Admin workspace', () => {
     api.getModerationDocument.mockResolvedValue({ result: document })
     api.moderateDocument.mockResolvedValue({})
 
-    open('/admin/documents')
+    const { container } = open('/admin/documents')
     expect(await screen.findByText('4.820')).toBeInTheDocument()
+    expect(container.querySelector('.moderation-file-type-badge')).toHaveTextContent('TXT')
+    expect(screen.queryByText('Mô tả không được hiển thị trong danh sách')).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'QUÉT VIRUS' })).not.toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'KHOA' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'NGÀNH' })).toBeInTheDocument()
+    expect(screen.getByText('Khoa Công nghệ Thông tin')).toBeInTheDocument()
+    expect(screen.getByText('Kỹ thuật phần mềm')).toBeInTheDocument()
     fireEvent.click(await screen.findByRole('button', { name: 'Kiểm duyệt' }))
-    fireEvent.click(await screen.findByRole('button', { name: /×\s*Từ chối/ }))
+    const moderationActions = await screen.findByLabelText('Thao tác kiểm duyệt')
+    expect(moderationActions).toBeInTheDocument()
+    expect(container.querySelector('.moderation-review-bar')).not.toBeInTheDocument()
+    fireEvent.click(within(moderationActions).getByRole('button', { name: /Từ chối/ }))
 
     expect(await screen.findByRole('dialog', { name: 'Lý do từ chối tài liệu' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Xác nhận từ chối' })).toBeDisabled()
