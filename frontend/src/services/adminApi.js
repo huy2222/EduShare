@@ -1,4 +1,4 @@
-import { apiGet, apiPostJson, apiPutJson, apiDelete } from './apiClient'
+import { apiGet, apiGetBlob, apiPostJson, apiPutJson, apiDelete } from './apiClient'
 
 export const getOverview = () => apiGet('/admin/overview')
 export const getRoles = () => apiGet('/admin/roles')
@@ -20,3 +20,12 @@ export const saveCatalog = (type, data) =>
     ? apiPutJson(`/admin/${type}/${data.id}`, data)
     : apiPostJson(`/admin/${type}`, data)
 export const deleteCatalog = (type, id) => apiDelete(`/admin/${type}/${id}`)
+export const getModerationDocuments = (page = 0, size = 20) =>
+  apiGet(`/admin/documents?page=${page}&size=${size}`)
+export const getModerationDocument = (id) => apiGet(`/admin/documents/${id}`)
+export const getModerationDocumentContent = (id) =>
+  apiGetBlob(`/admin/documents/${id}/content`)
+export const getModerationDocumentPreview = (id) =>
+  apiGetBlob(`/admin/documents/${id}/preview`)
+export const moderateDocument = (id, action, reason = '') =>
+  apiPostJson(`/admin/documents/${id}/moderate`, { action, reason })

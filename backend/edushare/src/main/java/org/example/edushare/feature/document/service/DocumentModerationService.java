@@ -9,6 +9,9 @@ import org.example.edushare.feature.document.entity.Document;
 import org.example.edushare.feature.document.entity.DocumentModeration;
 import org.example.edushare.feature.document.entity.DocumentStatus;
 import org.example.edushare.feature.document.entity.ModerationAction;
+import org.example.edushare.feature.document.entity.ScanStatus;
+import org.example.edushare.feature.document.dto.response.DocumentModerationPageResponse;
+import org.example.edushare.feature.document.dto.response.DocumentModerationResponse;
 import org.example.edushare.feature.document.repository.DocumentModerationRepository;
 import org.example.edushare.feature.document.repository.DocumentRepository;
 import org.example.edushare.feature.user.entity.User;
@@ -23,6 +26,8 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @Validated
@@ -33,6 +38,27 @@ public class DocumentModerationService {
     private final DocumentModerationRepository moderationRepository;
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
+    public DocumentModerationPageResponse listPending(Pageable pageable) {
+        return DocumentModerationPageResponse.from(
+                documentRepository.findAllByStatusAndScanStatus(DocumentStatus.PENDING, ScanStatus.CLEAN, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
+    public DocumentModerationResponse detail(UUID documentId) {
+        return DocumentModerationResponse.from(documentRepository.findDetailedById(documentId)
+                .orElseThrow(() -> new AppException(ErrorCode.DOCUMENT_NOT_FOUND)));
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
+    public Document document(UUID documentId) {
+        return documentRepository.findById(documentId)
+                .orElseThrow(() -> new AppException(ErrorCode.DOCUMENT_NOT_FOUND));
+    }
+
     @Transactional
     @PreAuthorize("@adminAuthorization.documentAction(#request.action)")
     public DocumentModeration moderate(UUID documentId, @Valid DocumentModerationRequest request) {
@@ -40,6 +66,10 @@ public class DocumentModerationService {
                 .orElseThrow(() -> new AppException(ErrorCode.DOCUMENT_NOT_FOUND));
 
         String reason = trimToNull(request.getReason());
+        if (request.getAction() == ModerationAction.APPROVED
+                && document.getScanStatus() != ScanStatus.CLEAN) {
+            throw new AppException(ErrorCode.DOCUMENT_NOT_CLEAN);
+        }
         if (request.getAction() != ModerationAction.APPROVED && reason == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
@@ -57,7 +87,7 @@ public class DocumentModerationService {
     }
 
     @Transactional(readOnly = true)
-    @PreAuthorize("@adminAuthorization.has('DOCUMENT_VIEW', 'APPROVE_DOCUMENT', 'DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'DOCUMENT_HIDE')")
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
     public List<DocumentModeration> getHistory(UUID documentId) {
         if (!documentRepository.existsById(documentId)) {
             throw new AppException(ErrorCode.DOCUMENT_NOT_FOUND);

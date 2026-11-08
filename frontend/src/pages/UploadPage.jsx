@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HomeHeader } from './HomePage'
-import { getAcademicCatalog, uploadDocument } from '../services/documentApi'
+import { getAcademicCatalog, getDocumentScanStatus, uploadDocument } from '../services/documentApi'
 import '../styles/upload.css'
 
 const reviewRules = [
@@ -27,6 +27,7 @@ const documentTypes = [
 ]
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024
+const PENDING_SCAN_STORAGE_KEY = 'edushare.pending-virus-scan'
 
 function UploadIcon({ name, size = 22 }) {
   const paths = {
@@ -85,6 +86,13 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
   const uploadFormRef = useRef(null)
   const [searchInput, setSearchInput] = useState('')
   const [title, setTitle] = useState('')
+  const [scanTracking, setScanTracking] = useState(() => {
+    try {
+      return JSON.parse(window.sessionStorage.getItem(PENDING_SCAN_STORAGE_KEY) || 'null')
+    } catch {
+      return null
+    }
+  })
   const [documentType, setDocumentType] = useState('LECTURE_NOTE')
   const [semesterEnabled, setSemesterEnabled] = useState(true)
   const [tags, setTags] = useState(['Java', 'Cấu trúc dữ liệu', 'Stack', 'Queue'])
@@ -146,6 +154,50 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
     const timeoutId = window.setTimeout(() => setToast(null), 5000)
     return () => window.clearTimeout(timeoutId)
   }, [toast])
+
+  useEffect(() => {
+    if (!scanTracking) return undefined
+
+    let active = true
+    const checkScanStatus = async () => {
+      try {
+        const response = await getDocumentScanStatus(scanTracking.id)
+        if (!active) return
+        const status = response.result?.scanStatus
+        if (status === 'CLEAN') {
+          setToast({
+            type: 'success',
+            message: `Tài liệu “${scanTracking.title}” đã quét an toàn và đang chờ kiểm duyệt.`,
+          })
+          window.sessionStorage.removeItem(PENDING_SCAN_STORAGE_KEY)
+          setScanTracking(null)
+        } else if (status === 'INFECTED') {
+          setToast({
+            type: 'error',
+            message: `Tài liệu “${scanTracking.title}” bị phát hiện mã độc và đã bị chặn.`,
+          })
+          window.sessionStorage.removeItem(PENDING_SCAN_STORAGE_KEY)
+          setScanTracking(null)
+        } else if (status === 'FAILED') {
+          setToast({
+            type: 'error',
+            message: `Chưa thể quét virus cho “${scanTracking.title}”. Vui lòng thử tải lại sau.`,
+          })
+          window.sessionStorage.removeItem(PENDING_SCAN_STORAGE_KEY)
+          setScanTracking(null)
+        }
+      } catch {
+        // Keep tracking: the next poll can recover from a temporary network failure.
+      }
+    }
+
+    checkScanStatus()
+    const intervalId = window.setInterval(checkScanStatus, 3000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
+  }, [scanTracking])
 
   const handleSearch = (event) => {
     event.preventDefault()
@@ -215,9 +267,12 @@ export default function UploadPage({ authenticated = false, onLogout = () => {} 
     try {
       const response = await uploadDocument(metadata, selectedFile)
       setConfirmationOpen(false)
+      const pendingScan = { id: response.result.id, title: response.result.title }
+      window.sessionStorage.setItem(PENDING_SCAN_STORAGE_KEY, JSON.stringify(pendingScan))
+      setScanTracking(pendingScan)
       setToast({
         type: 'success',
-        message: `Tải lên thành công. Tài liệu “${response.result.title}” đang chờ kiểm duyệt.`,
+        message: `Tải lên thành công. Tài liệu “${response.result.title}” đang được quét virus.`,
       })
     } catch (error) {
       setConfirmationOpen(false)

@@ -48,6 +48,9 @@ public enum ErrorCode {
     FACULTY_NOT_FOUND(1038, "Faculty not found", HttpStatus.NOT_FOUND),
     MAJOR_NOT_FOUND(1039, "Major not found in the selected faculty", HttpStatus.NOT_FOUND),
     SUBJECT_NOT_FOUND(1040, "Subject not found in the selected major", HttpStatus.NOT_FOUND),
+    DOCUMENT_VIRUS_DETECTED(1041, "The uploaded document contains malware", HttpStatus.BAD_REQUEST),
+    DOCUMENT_SCAN_FAILED(1042, "The document could not be scanned", HttpStatus.SERVICE_UNAVAILABLE),
+    DOCUMENT_NOT_CLEAN(1043, "Only clean documents can be approved", HttpStatus.FORBIDDEN),
 
     @Deprecated
     INVALID_OTP(1010, "Invalid verification code", HttpStatus.BAD_REQUEST),

@@ -1,4 +1,4 @@
-import { apiPostForm } from './apiClient'
+import { apiGet, apiPostForm } from './apiClient'
 export { getAcademicCatalog } from './academicApi'
 
 export function uploadDocument(metadata, file) {
@@ -9,4 +9,8 @@ export function uploadDocument(metadata, file) {
   )
   formData.append('file', file)
   return apiPostForm('/documents/upload', formData)
+}
+
+export function getDocumentScanStatus(documentId) {
+  return apiGet(`/documents/${documentId}/scan-status`)
 }
