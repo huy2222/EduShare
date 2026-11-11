@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import App from './App'
-import { login } from './services/authApi'
+import { getCurrentUser, login, logout } from './services/authApi'
 
 vi.mock('@react-oauth/google', () => ({
   GoogleLogin: () => <button type="button">Continue with Google</button>,
@@ -12,7 +12,9 @@ vi.mock('./services/authApi', async () => {
   const actual = await vi.importActual('./services/authApi')
   return {
     ...actual,
+    getCurrentUser: vi.fn(),
     login: vi.fn(),
+    logout: vi.fn(),
   }
 })
 
@@ -21,6 +23,8 @@ describe('App authentication navigation', () => {
     localStorage.clear()
     sessionStorage.clear()
     vi.clearAllMocks()
+    getCurrentUser.mockRejectedValue(new Error('No active session'))
+    logout.mockResolvedValue({ code: 1000 })
   })
 
   it('opens the home page first and exposes login and registration actions', () => {
@@ -56,4 +60,30 @@ describe('App authentication navigation', () => {
     await waitFor(() => expect(sessionStorage.getItem('edushare.accessToken')).toBeNull())
     expect(screen.getByRole('link', { name: 'Đăng nhập' })).toBeInTheDocument()
   })
+
+  it.each(['/login', '/register'])(
+    'restores an existing session instead of showing %s',
+    async (initialEntry) => {
+      getCurrentUser.mockResolvedValue({
+        code: 1000,
+        result: { email: 'student@university.edu.vn', roles: ['USER'] },
+      })
+
+      render(
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <App />
+        </MemoryRouter>,
+      )
+
+      expect(
+        await screen.findByRole('heading', { name: /Kho tài liệu học tập/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'Chào mừng bạn quay lại!' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'Tạo tài khoản mới' }),
+      ).not.toBeInTheDocument()
+    },
+  )
 })

@@ -20,9 +20,16 @@ export const saveCatalog = (type, data) =>
     ? apiPutJson(`/admin/${type}/${data.id}`, data)
     : apiPostJson(`/admin/${type}`, data)
 export const deleteCatalog = (type, id) => apiDelete(`/admin/${type}/${id}`)
-export const getModerationDocuments = (page = 0, size = 20) =>
-  apiGet(`/admin/documents?page=${page}&size=${size}`)
+export const getModerationDocuments = (filters = {}) => {
+  const params = new URLSearchParams()
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== '' && value !== undefined && value !== null) params.set(key, value)
+  })
+  return apiGet(`/admin/documents?${params}`)
+}
 export const getModerationStats = () => apiGet('/admin/documents/stats')
+export const exportModerationDocuments = (filters = {}) =>
+  apiGetBlob(`/admin/documents/export?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== '' && value !== undefined && value !== null))}`)
 export const getModerationDocument = (id) => apiGet(`/admin/documents/${id}`)
 export const getModerationDocumentContent = (id) =>
   apiGetBlob(`/admin/documents/${id}/content`)

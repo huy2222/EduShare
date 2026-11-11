@@ -23,6 +23,8 @@ public class DocumentModerationResponse {
     String previewStatus;
     String previewError;
     LocalDateTime createdAt;
+    Long viewCount;
+    Long downloadCount;
     String uploaderId;
     String uploaderName;
     String uploaderEmail;
@@ -50,6 +52,8 @@ public class DocumentModerationResponse {
                 .previewStatus(document.getPreviewStatus() == null ? null : document.getPreviewStatus().name())
                 .previewError(document.getPreviewError())
                 .createdAt(document.getCreatedAt())
+                .viewCount(document.getViewCount())
+                .downloadCount(document.getDownloadCount())
                 .uploaderId(uploader == null ? null : uploader.getId())
                 .uploaderName(uploader == null || uploader.getProfile() == null
                         ? null : uploader.getProfile().getFullName())

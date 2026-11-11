@@ -19,6 +19,7 @@ vi.mock('../services/adminApi', () => ({
   getModerationStats: vi.fn(),
   getModerationDocument: vi.fn(),
   getModerationDocumentPreview: vi.fn(),
+  exportModerationDocuments: vi.fn(),
   moderateDocument: vi.fn(),
 }))
 
@@ -277,7 +278,7 @@ describe('Admin workspace', () => {
     getCurrentUser.mockResolvedValue({
       result: { roles: ['USER'], permissions: ['DOCUMENT_VIEW'] },
     })
-    open('/admin/documents')
+    open('/admin/moderation')
     expect(
       await screen.findByText('Bạn không có quyền quản trị'),
     ).toBeInTheDocument()
@@ -307,7 +308,7 @@ describe('Admin workspace', () => {
     api.getModerationDocument.mockResolvedValue({ result: document })
     api.moderateDocument.mockResolvedValue({})
 
-    const { container } = open('/admin/documents')
+    const { container } = open('/admin/moderation')
     expect(await screen.findByText('4.820')).toBeInTheDocument()
     expect(container.querySelector('.moderation-file-type-badge')).toHaveTextContent('TXT')
     expect(screen.queryByText('Mô tả không được hiển thị trong danh sách')).not.toBeInTheDocument()
@@ -336,6 +337,71 @@ describe('Admin workspace', () => {
         'Nội dung không đúng môn học.',
       ),
     )
+  })
+
+  it('shows immediate loading feedback while opening document details', async () => {
+    const document = {
+      id: 'doc-loading',
+      title: 'Tài liệu đang tải',
+      fileName: 'tai-lieu.txt',
+      fileType: 'TXT',
+      fileSize: 2048,
+      scanStatus: 'CLEAN',
+      status: 'PENDING',
+      previewStatus: 'NOT_REQUIRED',
+    }
+    let resolveDetail
+    api.getModerationDocuments.mockResolvedValue({
+      result: { items: [document], totalElements: 1 },
+    })
+    api.getModerationStats.mockResolvedValue({
+      result: { pending: 1, approved: 0, rejected: 0, total: 1 },
+    })
+    api.getModerationDocument.mockImplementation(
+      () => new Promise((resolve) => { resolveDetail = resolve }),
+    )
+
+    open('/admin/moderation')
+    fireEvent.click(await screen.findByRole('button', { name: 'Kiểm duyệt' }))
+    expect(
+      screen.getByRole('status', { name: 'Đang mở màn hình kiểm duyệt…' }),
+    ).toBeInTheDocument()
+
+    resolveDetail({ result: document })
+    expect(await screen.findByRole('dialog', { name: 'Tài liệu đang tải' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('status', { name: 'Đang mở màn hình kiểm duyệt…' })).not.toBeInTheDocument(),
+    )
+  })
+
+  it('keeps document management separate from the moderation workflow', async () => {
+    const document = {
+      id: 'doc-approved',
+      title: 'Tài liệu đã xuất bản',
+      fileName: 'published.txt',
+      fileType: 'TXT',
+      scanStatus: 'CLEAN',
+      status: 'APPROVED',
+      previewStatus: 'NOT_REQUIRED',
+    }
+    api.getModerationDocuments.mockResolvedValue({
+      result: { items: [document], totalElements: 1 },
+    })
+    api.getModerationStats.mockResolvedValue({
+      result: { pending: 0, approved: 1, rejected: 0, total: 1 },
+    })
+    api.getModerationDocument.mockResolvedValue({ result: document })
+
+    open('/admin/documents')
+    expect(await screen.findByRole('heading', { name: 'Quản lý tài liệu' })).toBeInTheDocument()
+    const detailButton = await screen.findByRole('button', { name: 'Chi tiết' })
+    expect(detailButton).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kiểm duyệt' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Duyệt đã chọn')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Chọn tất cả tài liệu an toàn')).not.toBeInTheDocument()
+    fireEvent.click(detailButton)
+    expect(await screen.findByRole('dialog', { name: 'Tài liệu đã xuất bản' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Thao tác kiểm duyệt')).not.toBeInTheDocument()
   })
 
   it('creates a subject with its selected faculty', async () => {

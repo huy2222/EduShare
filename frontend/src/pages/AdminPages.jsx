@@ -1,7 +1,7 @@
 import { hasPermission, sectionPermissions } from "../services/adminAccess";
 import AdminAccess from "../components/AdminAccess";
 import Catalog from "../components/AdminCatalog";
-import { Modal, Pagination } from "../components/AdminUi";
+import { LoadingOverlay, Modal, Pagination } from "../components/AdminUi";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Navigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../services/authApi";
@@ -13,6 +13,7 @@ import {
   getModerationStats,
   getModerationDocument,
   getModerationDocumentPreview,
+  exportModerationDocuments,
   moderateDocument,
   updateUser,
 } from "../services/adminApi";
@@ -21,7 +22,8 @@ import "../styles/admin.css";
 
 const sections = {
   overview: "Tổng quan",
-  documents: "Kiểm duyệt tài liệu",
+  documents: "Quản lý tài liệu",
+  moderation: "Kiểm duyệt tài liệu",
   users: "Quản lý người dùng",
   faculties: "Khoa & ngành",
   subjects: "Quản lý môn học",
@@ -78,6 +80,12 @@ function Icon({ name }) {
       <>
         <path d="M6 3h8l4 4v14H6z" />
         <path d="M14 3v5h5M9 13h6M9 17h6" />
+      </>
+    ),
+    moderation: (
+      <>
+        <path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z" />
+        <path d="m8.5 12 2.2 2.2 4.8-5" />
       </>
     ),
     arrow: <path d="M19 12H5m6-6-6 6 6 6" />,
@@ -586,73 +594,23 @@ function AcademicManagement({ currentUser }) {
   );
 }
 
-const moderationSeed = [
-  {
-    id: "doc-1",
-    title: "Đề cương & Ngân hàng câu hỏi Lập trình Phần tán 2024.pdf",
-    description: "Hệ phần tán • K64 CNTT • Giáo trình",
-    uploader: "Trần Đình Trọng",
-    email: "trong.td@edushare.edu.vn",
-    time: "10:24, 23/10",
-    size: "4.8 MB (42 trang)",
-    scan: "CLEAN",
-    status: "PENDING",
-    type: "pdf",
-  },
-  {
-    id: "doc-2",
-    title: "Giáo trình Nguyên lý hệ điều hành - Chương 4 & 5.docx",
-    description: "Hệ điều hành • Khoa CNTT",
-    uploader: "Lê Hoàng Long",
-    email: "long.lh@edushare.edu.vn",
-    time: "09:15, 23/10",
-    size: "12.3 MB (85 trang)",
-    scan: "CLEAN",
-    status: "PENDING",
-    type: "doc",
-  },
-  {
-    id: "doc-3",
-    title: "Slide Bài giảng Mạng máy tính Cisco CCNA - Crack Tool.pdf",
-    description: "Phát hiện Trojan.PDF.Phish (Mã hash: 8f9c…a12)",
-    uploader: "Nguyễn Văn Nam",
-    email: "nam.nv@edushare.edu.vn",
-    time: "08:42, 23/10",
-    size: "26.5 MB (18 trang)",
-    scan: "INFECTED",
-    status: "REJECTED",
-    type: "pdf",
-  },
-  {
-    id: "doc-4",
-    title: "Thuyết trình Kiến trúc Vi xử lý ARMv8.pptx",
-    description: "Kiến trúc máy tính • Khoa Điện tử",
-    uploader: "Phạm Minh Tuấn",
-    email: "tuan.pm@edushare.edu.vn",
-    time: "Hôm qua 21:30",
-    size: "45.0 MB (64 slides)",
-    scan: "PENDING",
-    status: "PENDING",
-    type: "ppt",
-  },
-  {
-    id: "doc-5",
-    title: "Bảng tổng hợp dữ liệu thực hành Cơ sở dữ liệu Oracle.xlsx",
-    description: "Cơ sở dữ liệu • Khoa CNTT",
-    uploader: "Hoàng Mai Linh",
-    email: "linh.hm@edushare.edu.vn",
-    time: "Hôm qua 18:20",
-    size: "2.1 MB (3 sheets)",
-    scan: "CLEAN",
-    status: "APPROVED",
-    type: "sheet",
-  },
-];
-
 const moderationStatusLabels = {
   PENDING: "Chờ duyệt",
   APPROVED: "Đã duyệt",
   REJECTED: "Bị chặn",
+  DELETED: "Đã ẩn",
+};
+
+const moderationDocumentTypeLabels = {
+  LECTURE_NOTE: "Bài giảng",
+  TEXTBOOK: "Giáo trình",
+  REFERENCE: "Tham khảo",
+  EXAM: "Đề thi",
+  SOLUTION: "Đáp án",
+  ASSIGNMENT: "Bài tập",
+  PROJECT: "Đồ án",
+  SUMMARY: "Tóm tắt",
+  OTHER: "Khác",
 };
 
 const moderationFileTypeLabels = {
@@ -688,6 +646,8 @@ const normalizeModerationDocument = (item) => ({
   email: item.uploaderEmail || "—",
   faculty: item.facultyName || "—",
   major: item.majorName || "—",
+  subject: item.subjectName || "—",
+  subjectCode: item.subjectCode || "",
   time: item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : "—",
   size: formatFileSize(item.fileSize),
   scan: item.scanStatus,
@@ -697,19 +657,27 @@ const normalizeModerationDocument = (item) => ({
   previewError: item.previewError || "",
   fileName: item.fileName,
   objectKey: item.objectKey,
+  views: item.viewCount || 0,
+  downloads: item.downloadCount || 0,
+  documentType: item.documentType || "OTHER",
   raw: item,
 });
 
-function DocumentModeration() {
+function DocumentModeration({ mode = "management" }) {
+  const isModeration = mode === "moderation";
   const [documents, setDocuments] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("PENDING");
-  const [scanFilter, setScanFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(
+    isModeration ? "PENDING" : "",
+  );
   const [typeFilter, setTypeFilter] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState([]);
   const [notice, setNotice] = useState("");
   const [detail, setDetail] = useState(null);
@@ -718,6 +686,7 @@ function DocumentModeration() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectError, setRejectError] = useState("");
   const [moderating, setModerating] = useState(false);
+  const [busyAction, setBusyAction] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -747,36 +716,43 @@ function DocumentModeration() {
 
   useEffect(() => {
     let active = true;
+    const timer = setTimeout(() => {
     setLoading(true);
-    Promise.all([getModerationDocuments(), getModerationStats()])
+    Promise.all([
+      getModerationDocuments({
+        page,
+        size: 10,
+        search: query.trim(),
+        status: isModeration ? "PENDING" : statusFilter,
+        fileType: typeFilter.toUpperCase(),
+        createdFrom:
+          periodFilter === "month"
+            ? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+                .toLocaleDateString("en-CA")
+            : "",
+      }),
+      getModerationStats(),
+    ])
       .then(([response, statsResponse]) => {
         if (active) {
           setDocuments(
             (response.result?.items || []).map(normalizeModerationDocument),
           );
+          setTotal(response.result?.totalElements || 0);
           setStats(statsResponse.result);
           setError("");
         }
       })
       .catch((requestError) => active && setError(requestError.message))
       .finally(() => active && setLoading(false));
+    }, query ? 250 : 0);
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [reload]);
+  }, [reload, page, query, statusFilter, typeFilter, periodFilter]);
 
-  const visible = documents.filter((document) => {
-    const matchesQuery = [document.title, document.uploader, document.email]
-      .join(" ")
-      .toLocaleLowerCase("vi")
-      .includes(query.trim().toLocaleLowerCase("vi"));
-    return (
-      matchesQuery &&
-      (!statusFilter || document.status === statusFilter) &&
-      (!scanFilter || document.scan === scanFilter) &&
-      (!typeFilter || document.type === typeFilter)
-    );
-  });
+  const visible = documents;
   const selectable = visible.filter(
     (document) => document.status === "PENDING" && document.scan === "CLEAN",
   );
@@ -797,6 +773,13 @@ function DocumentModeration() {
   const updateStatus = async (ids, status, reason = "") => {
     if (!ids.length) return;
     setModerating(true);
+    setBusyAction(
+      status === "APPROVED"
+        ? "Đang phê duyệt tài liệu…"
+        : status === "HIDDEN"
+          ? "Đang ẩn tài liệu…"
+          : "Đang từ chối tài liệu…",
+    );
     try {
       await Promise.all(ids.map((id) => moderateDocument(id, status, reason)));
       setSelected([]);
@@ -807,21 +790,24 @@ function DocumentModeration() {
       setNotice(
         status === "APPROVED"
           ? "Đã duyệt tài liệu đã chọn."
-          : "Đã từ chối tài liệu đã chọn.",
+          : status === "HIDDEN"
+            ? "Đã ẩn tài liệu đã chọn."
+            : "Đã từ chối tài liệu đã chọn.",
       );
       setReload((value) => value + 1);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setModerating(false);
+      setBusyAction("");
     }
   };
 
-  const openRejectDialog = (ids, label) => {
+  const openRejectDialog = (ids, label, action = "REJECTED") => {
     if (!ids.length) return;
     setRejectReason("");
     setRejectError("");
-    setRejectRequest({ ids, label });
+    setRejectRequest({ ids, label, action });
   };
 
   const submitRejection = (event) => {
@@ -831,41 +817,85 @@ function DocumentModeration() {
       setRejectError("Vui lòng nhập lý do từ chối tài liệu.");
       return;
     }
-    updateStatus(rejectRequest.ids, "REJECTED", reason);
+    updateStatus(rejectRequest.ids, rejectRequest.action, reason);
+  };
+
+  const exportReport = async () => {
+    setBusyAction("Đang tạo báo cáo tài liệu…");
+    try {
+      const blob = await exportModerationDocuments({
+        search: query.trim(), status: isModeration ? "PENDING" : statusFilter, fileType: typeFilter.toUpperCase(),
+        createdFrom: periodFilter === "month" ? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString("en-CA") : "",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `bao-cao-tai-lieu-${new Date().toLocaleDateString("en-CA")}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(`Không thể xuất báo cáo: ${requestError.message}`);
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const openDocumentDetail = async (document) => {
+    setBusyAction(
+      isModeration
+        ? "Đang mở màn hình kiểm duyệt…"
+        : "Đang tải chi tiết tài liệu…",
+    );
+    try {
+      const response = await getModerationDocument(document.id);
+      setDetail(normalizeModerationDocument(response.result));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusyAction("");
+    }
   };
 
   return (
     <div className="admin-moderation">
+      {(busyAction || loading) && (
+        <LoadingOverlay
+          message={busyAction || "Đang tải danh sách tài liệu…"}
+        />
+      )}
+      {!isModeration && (
+        <div className="admin-document-actions">
+          <button type="button" onClick={exportReport} disabled={!visible.length || Boolean(busyAction)}>⇩ Xuất báo cáo</button>
+        </div>
+      )}
       <div className="admin-moderation-stats">
         <article>
           <div>
-            <small>Chờ phê duyệt</small>
-            <strong>{formatStat(stats?.pending)}</strong>
+            <small>{isModeration ? "Chờ phê duyệt" : "Tổng tài liệu"}</small>
+            <strong>{formatStat(isModeration ? stats?.pending : stats?.total)}</strong>
           </div>
           <span>▣</span>
         </article>
         <article>
           <div>
-            <small>Đã duyệt hôm nay</small>
+            <small>{isModeration ? "Đã duyệt hôm nay" : "Đã duyệt"}</small>
             <strong className="is-blue">
-              {formatStat(stats?.approvedToday)}
+              {formatStat(isModeration ? stats?.approvedToday : stats?.approved)}
             </strong>
           </div>
           <span>✓</span>
         </article>
         <article>
           <div>
-            <small>Từ chối hôm nay</small>
-            <strong className="is-red">
-              {formatStat(stats?.rejectedToday)}
-            </strong>
+            <small>{isModeration ? "Từ chối hôm nay" : "Chờ duyệt"}</small>
+            <strong className={isModeration ? "is-red" : ""}>{formatStat(isModeration ? stats?.rejectedToday : stats?.pending)}</strong>
           </div>
           <span>×</span>
         </article>
         <article>
           <div>
-            <small>Tổng tài liệu</small>
-            <strong>{formatStat(stats?.total)}</strong>
+            <small>{isModeration ? "Tổng tài liệu" : "Bị từ chối"}</small>
+            <strong className={isModeration ? "" : "is-red"}>{formatStat(isModeration ? stats?.total : stats?.rejected)}</strong>
           </div>
           <span>▤</span>
         </article>
@@ -879,25 +909,26 @@ function DocumentModeration() {
                 aria-label="Tìm kiếm tài liệu, người tải"
                 placeholder="Tìm kiếm tên tài liệu, người tải…"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => { setQuery(event.target.value); setPage(0); }}
               />
             </label>
-            <select
-              aria-label="Lọc trạng thái tài liệu"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="PENDING">
-                Chờ phê duyệt ({formatStat(pendingCount)})
-              </option>
-              <option value="APPROVED">Đã duyệt</option>
-              <option value="REJECTED">Bị chặn</option>
-            </select>
+            {!isModeration && (
+              <select
+                aria-label="Lọc trạng thái tài liệu"
+                value={statusFilter}
+                onChange={(event) => { setStatusFilter(event.target.value); setPage(0); }}
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="PENDING">Chờ phê duyệt ({formatStat(pendingCount)})</option>
+                <option value="APPROVED">Đã duyệt</option>
+                <option value="REJECTED">Bị chặn</option>
+                <option value="DELETED">Đã ẩn</option>
+              </select>
+            )}
             <select
               aria-label="Lọc định dạng"
               value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
+              onChange={(event) => { setTypeFilter(event.target.value); setPage(0); }}
             >
               <option value="">Tất cả định dạng</option>
               <option value="pdf">PDF</option>
@@ -909,18 +940,12 @@ function DocumentModeration() {
               <option value="pptx">PowerPoint (.pptx)</option>
               <option value="txt">TXT</option>
             </select>
-            <select
-              aria-label="Lọc quét virus"
-              value={scanFilter}
-              onChange={(event) => setScanFilter(event.target.value)}
-            >
-              <option value="">Quét virus: Tất cả</option>
-              <option value="CLEAN">An toàn</option>
-              <option value="INFECTED">Mã độc</option>
-              <option value="PENDING">Chưa quét</option>
+            <select aria-label="Lọc thời gian" value={periodFilter} onChange={(event) => { setPeriodFilter(event.target.value); setPage(0); }}>
+              <option value="">Mọi thời gian</option>
+              <option value="month">Tháng này</option>
             </select>
           </div>
-          <div className="admin-moderation-bulk-actions">
+          {isModeration && <div className="admin-moderation-bulk-actions">
             <span className="admin-selected-count">
               {selected.length
                 ? `Đã chọn ${selected.length}`
@@ -946,7 +971,7 @@ function DocumentModeration() {
             >
               Duyệt đã chọn
             </button>
-          </div>
+          </div>}
         </div>
         {notice && (
           <p className="admin-success" role="status">
@@ -965,10 +990,10 @@ function DocumentModeration() {
           </p>
         )}
         <div className="admin-moderation-table-scroll">
-          <table className="admin-moderation-table">
+          <table className={`admin-moderation-table${isModeration ? "" : " is-management"}`}>
             <thead>
               <tr>
-                <th>
+                {isModeration && <th>
                   <input
                     aria-label="Chọn tất cả tài liệu an toàn"
                     type="checkbox"
@@ -979,22 +1004,24 @@ function DocumentModeration() {
                       )
                     }
                   />
-                </th>
+                </th>}
                 <th>TÀI LIỆU</th>
                 <th>NGƯỜI TẢI</th>
-                <th>KHOA</th>
-                <th>NGÀNH</th>
-                <th>THỜI GIAN</th>
-                <th>DUNG LƯỢNG</th>
+                <th className="admin-visually-hidden">KHOA</th>
+                <th className="admin-visually-hidden">NGÀNH</th>
+                <th>MÔN HỌC</th>
+                <th>LOẠI TÀI LIỆU</th>
                 <th>TRẠNG THÁI</th>
+                <th>TƯƠNG TÁC</th>
+                <th>NGÀY TẢI</th>
                 <th>THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="9" className="admin-empty">
-                    Đang tải tài liệu chờ duyệt…
+                  <td colSpan={isModeration ? 11 : 10} className="admin-empty">
+                    {isModeration ? "Đang tải tài liệu chờ duyệt…" : "Đang tải danh sách tài liệu…"}
                   </td>
                 </tr>
               ) : visible.length ? (
@@ -1008,7 +1035,7 @@ function DocumentModeration() {
                         document.scan === "INFECTED" ? "is-infected" : ""
                       }
                     >
-                      <td>
+                      {isModeration && <td>
                         <input
                           aria-label={`Chọn ${document.title}`}
                           type="checkbox"
@@ -1016,7 +1043,7 @@ function DocumentModeration() {
                           disabled={!canApprove}
                           onChange={() => toggleSelected(document.id)}
                         />
-                      </td>
+                      </td>}
                       <td>
                         <div className="moderation-document">
                           <span
@@ -1034,14 +1061,10 @@ function DocumentModeration() {
                           <small>{document.email}</small>
                         </div>
                       </td>
-                      <td className="moderation-academic-cell">
-                        {document.faculty}
-                      </td>
-                      <td className="moderation-academic-cell">
-                        {document.major}
-                      </td>
-                      <td>{document.time}</td>
-                      <td>{document.size}</td>
+                      <td className="admin-visually-hidden">{document.faculty}</td>
+                      <td className="admin-visually-hidden">{document.major}</td>
+                      <td className="moderation-academic-cell"><b>{document.subject}</b><small>{document.subjectCode}</small></td>
+                      <td><span className="admin-badge">{moderationDocumentTypeLabels[document.documentType] || document.documentType}</span></td>
                       <td>
                         <span
                           className={`moderation-pill status-${document.status.toLowerCase()}`}
@@ -1049,24 +1072,16 @@ function DocumentModeration() {
                           {moderationStatusLabels[document.status]}
                         </span>
                       </td>
+                      <td className="moderation-interactions">◉ {number(document.views)} &nbsp; ⇩ {number(document.downloads)}</td>
+                      <td>{document.time}</td>
                       <td>
                         <button
                           className="moderation-action"
                           type="button"
-                          onClick={async () => {
-                            try {
-                              const response = await getModerationDocument(
-                                document.id,
-                              );
-                              setDetail(
-                                normalizeModerationDocument(response.result),
-                              );
-                            } catch (requestError) {
-                              setError(requestError.message);
-                            }
-                          }}
+                          onClick={() => openDocumentDetail(document)}
+                          disabled={Boolean(busyAction)}
                         >
-                          {canApprove ? "Kiểm duyệt" : "Chi tiết"}
+                          {isModeration ? "Kiểm duyệt" : "Chi tiết"}
                         </button>
                       </td>
                     </tr>
@@ -1074,7 +1089,7 @@ function DocumentModeration() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="9" className="admin-empty">
+                  <td colSpan={isModeration ? 11 : 10} className="admin-empty">
                     Không tìm thấy tài liệu phù hợp.
                   </td>
                 </tr>
@@ -1082,12 +1097,7 @@ function DocumentModeration() {
             </tbody>
           </table>
         </div>
-        <div className="admin-moderation-footer">
-          <span>
-            Đang hiển thị {visible.length} / {documents.length} tài liệu
-          </span>
-          <span>Trang 1 / 1</span>
-        </div>
+        <Pagination page={page} total={total} size={10} onChange={setPage} />
       </section>
       {detail && (
         <div className="moderation-detail-backdrop" role="presentation">
@@ -1208,7 +1218,7 @@ function DocumentModeration() {
                     <dd>{detail.raw?.facultyName || "—"}</dd>
                   </dl>
                 </section>
-                <section className="moderation-info-actions" aria-label="Thao tác kiểm duyệt">
+                {isModeration && <section className="moderation-info-actions" aria-label="Thao tác kiểm duyệt">
                   <button
                     type="button"
                     className="moderation-reject-button"
@@ -1217,6 +1227,9 @@ function DocumentModeration() {
                   >
                     Từ chối
                   </button>
+                  {detail.status === "APPROVED" && (
+                    <button type="button" className="moderation-reject-button" onClick={() => openRejectDialog([detail.id], detail.title, "HIDDEN")} disabled={moderating}>Ẩn tài liệu</button>
+                  )}
                   <button
                     type="button"
                     className="admin-primary moderation-approve-button"
@@ -1229,7 +1242,7 @@ function DocumentModeration() {
                   >
                     Phê duyệt
                   </button>
-                </section>
+                </section>}
               </aside>
             </div>
           </section>
@@ -1237,13 +1250,13 @@ function DocumentModeration() {
       )}
       {rejectRequest && (
         <Modal
-          title="Lý do từ chối tài liệu"
+          title={rejectRequest.action === "HIDDEN" ? "Lý do ẩn tài liệu" : "Lý do từ chối tài liệu"}
           onClose={() => setRejectRequest(null)}
           busy={moderating}
         >
           <form className="moderation-reject-form" onSubmit={submitRejection}>
             <p>
-              Bạn đang từ chối <strong>{rejectRequest.label}</strong>. Lý do này
+              Bạn đang {rejectRequest.action === "HIDDEN" ? "ẩn" : "từ chối"} <strong>{rejectRequest.label}</strong>. Lý do này
               sẽ được lưu vào lịch sử kiểm duyệt.
             </p>
             <label htmlFor="moderation-reject-reason">
@@ -1291,7 +1304,7 @@ function DocumentModeration() {
                 className="moderation-confirm-reject"
                 disabled={moderating || !rejectReason.trim()}
               >
-                {moderating ? "Đang từ chối…" : "Xác nhận từ chối"}
+                {moderating ? "Đang xử lý…" : rejectRequest.action === "HIDDEN" ? "Xác nhận ẩn" : "Xác nhận từ chối"}
               </button>
             </div>
           </form>
@@ -1424,14 +1437,18 @@ export default function AdminPages({
                   : section === "access"
                     ? "Quản lý vai trò, cấu hình quyền và phân quyền người dùng."
                     : section === "documents"
-                      ? "Kiểm tra an toàn tệp tin và phê duyệt tài liệu trước khi xuất bản."
+                      ? "Tổng hợp, tìm kiếm và theo dõi toàn bộ tài liệu trong hệ thống."
+                    : section === "moderation"
+                      ? "Xử lý hàng chờ, kiểm tra nội dung và phê duyệt tài liệu mới."
                       : "Quản lý danh mục đào tạo và tổ chức tài liệu học tập."}
             </span>
           </div>
           {section === "overview" ? (
             <Overview />
           ) : section === "documents" ? (
-            <DocumentModeration />
+            <DocumentModeration key="management" mode="management" />
+          ) : section === "moderation" ? (
+            <DocumentModeration key="moderation" mode="moderation" />
           ) : section === "users" ? (
             <Users currentUser={user} />
           ) : section === "access" ? (
