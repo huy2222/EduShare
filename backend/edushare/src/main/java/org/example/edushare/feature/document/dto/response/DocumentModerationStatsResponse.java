@@ -7,6 +7,8 @@ import lombok.Value;
 @Builder
 public class DocumentModerationStatsResponse {
     long pending;
+    long approved;
+    long rejected;
     long approvedToday;
     long rejectedToday;
     long total;

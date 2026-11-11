@@ -71,6 +71,17 @@ export default function App() {
   }
 
   const sharedProps = { authenticated, currentUser, onLogout: handleLogout }
+  const authenticatedLandingPage = canEnterAdmin(currentUser) ? '/admin' : '/'
+  const loginElement = authLoading
+    ? null
+    : authenticated
+      ? <Navigate to={authenticatedLandingPage} replace />
+      : <LoginPage onAuthenticated={handleAuthenticated} />
+  const registerElement = authLoading
+    ? null
+    : authenticated
+      ? <Navigate to={authenticatedLandingPage} replace />
+      : <RegisterPage onAuthenticated={handleAuthenticated} />
 
   return (
     <Routes>
@@ -99,11 +110,11 @@ export default function App() {
       <Route path="/subjects" element={<HomePage {...sharedProps} />} />
       <Route
         path="/login"
-        element={<LoginPage onAuthenticated={handleAuthenticated} />}
+        element={loginElement}
       />
       <Route
         path="/register"
-        element={<RegisterPage onAuthenticated={handleAuthenticated} />}
+        element={registerElement}
       />
       <Route
         path="/forgot-password"

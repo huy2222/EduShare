@@ -15,9 +15,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
+import org.example.edushare.feature.document.entity.DocumentStatus;
+import org.example.edushare.feature.document.entity.FileType;
 
 @RestController
 @RequestMapping("/api/v1/admin/documents")
@@ -31,11 +36,18 @@ public class AdminDocumentController {
     @GetMapping
     public ApiResponse<DocumentModerationPageResponse> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) DocumentStatus status,
+            @RequestParam(required = false) FileType fileType,
+            @RequestParam(required = false) String subjectId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom) {
         int safeSize = Math.min(Math.max(size, 1), 50);
         return ApiResponse.<DocumentModerationPageResponse>builder()
-                .result(moderationService.listPending(PageRequest.of(page, safeSize,
-                        Sort.by(Sort.Direction.DESC, "createdAt"))))
+                .result(moderationService.list(search, status, fileType, subjectId,
+                        createdFrom == null ? null : createdFrom.atStartOfDay(),
+                        PageRequest.of(Math.max(page, 0), safeSize,
+                                Sort.by(Sort.Direction.DESC, "createdAt"))))
                 .build();
     }
 
@@ -44,6 +56,37 @@ public class AdminDocumentController {
         return ApiResponse.<DocumentModerationStatsResponse>builder()
                 .result(moderationService.stats())
                 .build();
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) DocumentStatus status,
+            @RequestParam(required = false) FileType fileType,
+            @RequestParam(required = false) String subjectId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom) {
+        StringBuilder csv = new StringBuilder("\uFEFFTài liệu,Người đăng,Email,Môn học,Loại tài liệu,Trạng thái,Lượt xem,Lượt tải,Ngày tải\n");
+        moderationService.export(search, status, fileType, subjectId,
+                        createdFrom == null ? null : createdFrom.atStartOfDay())
+                .forEach(item -> csv.append(csv(item.getTitle())).append(',')
+                        .append(csv(item.getUploaderName())).append(',')
+                        .append(csv(item.getUploaderEmail())).append(',')
+                        .append(csv(item.getSubjectName())).append(',')
+                        .append(csv(item.getDocumentType())).append(',')
+                        .append(csv(item.getStatus())).append(',')
+                        .append(item.getViewCount() == null ? 0 : item.getViewCount()).append(',')
+                        .append(item.getDownloadCount() == null ? 0 : item.getDownloadCount()).append(',')
+                        .append(csv(item.getCreatedAt())).append('\n'));
+        byte[] body = csv.toString().getBytes(StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .contentLength(body.length)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=edushare-documents.csv")
+                .body(body);
+    }
+
+    private String csv(Object value) {
+        return "\"" + String.valueOf(value == null ? "" : value).replace("\"", "\"\"") + "\"";
     }
 
     @GetMapping("/{id:[0-9a-fA-F-]+}")

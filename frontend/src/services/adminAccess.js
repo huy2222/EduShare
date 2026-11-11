@@ -5,6 +5,7 @@ export const sectionPermissions = {
   // DOCUMENT_VIEW is intentionally excluded: normal users need it for their
   // own document workspace, but it must not grant access to moderation.
   documents: ['DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE'],
+  moderation: ['DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE'],
   users: ['USER_VIEW'],
   faculties: [
     'CATALOG_VIEW',

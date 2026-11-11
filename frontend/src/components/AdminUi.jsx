@@ -1,5 +1,18 @@
 import { useEffect, useRef } from 'react'
 const number = (value) => (value || 0).toLocaleString('vi-VN')
+
+export function LoadingOverlay({ message = 'Đang xử lý…' }) {
+  return (
+    <div className="admin-loading-overlay" role="status" aria-live="assertive" aria-label={message}>
+      <div className="admin-loading-card">
+        <span className="admin-loading-spinner" aria-hidden="true" />
+        <strong>{message}</strong>
+        <small>Vui lòng chờ trong giây lát.</small>
+      </div>
+    </div>
+  )
+}
+
 export function Modal({ title, children, onClose, busy }) {
   const ref = useRef(null)
   useEffect(() => {

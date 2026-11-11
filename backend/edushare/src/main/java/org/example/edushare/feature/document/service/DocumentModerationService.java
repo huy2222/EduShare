@@ -10,6 +10,7 @@ import org.example.edushare.feature.document.entity.DocumentModeration;
 import org.example.edushare.feature.document.entity.DocumentStatus;
 import org.example.edushare.feature.document.entity.ModerationAction;
 import org.example.edushare.feature.document.entity.ScanStatus;
+import org.example.edushare.feature.document.entity.FileType;
 import org.example.edushare.feature.document.dto.response.DocumentModerationPageResponse;
 import org.example.edushare.feature.document.dto.response.DocumentModerationResponse;
 import org.example.edushare.feature.document.dto.response.DocumentModerationStatsResponse;
@@ -31,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @Service
 @Validated
@@ -50,11 +52,42 @@ public class DocumentModerationService {
 
     @Transactional(readOnly = true)
     @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
+    public DocumentModerationPageResponse list(
+            String search,
+            DocumentStatus status,
+            FileType fileType,
+            String subjectId,
+            LocalDateTime createdFrom,
+            Pageable pageable) {
+        return DocumentModerationPageResponse.from(documentRepository.searchForAdministration(
+                trimToNull(search), status, fileType, trimToNull(subjectId), createdFrom, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
+    public List<DocumentModerationResponse> export(
+            String search,
+            DocumentStatus status,
+            FileType fileType,
+            String subjectId,
+            LocalDateTime createdFrom) {
+        return documentRepository.searchForAdministration(
+                        trimToNull(search), status, fileType, trimToNull(subjectId), createdFrom,
+                        Pageable.unpaged(Sort.by(Sort.Direction.DESC, "createdAt")))
+                .getContent().stream()
+                .map(DocumentModerationResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
     public DocumentModerationStatsResponse stats() {
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
         LocalDateTime startOfTomorrow = startOfToday.plusDays(1);
         return DocumentModerationStatsResponse.builder()
                 .pending(documentRepository.countByStatus(DocumentStatus.PENDING))
+                .approved(documentRepository.countByStatus(DocumentStatus.APPROVED))
+                .rejected(documentRepository.countByStatus(DocumentStatus.REJECTED))
                 .approvedToday(moderationRepository
                         .countByActionAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                                 ModerationAction.APPROVED, startOfToday, startOfTomorrow))
