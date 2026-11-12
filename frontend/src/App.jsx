@@ -2,7 +2,7 @@ import { canEnterAdmin } from './services/adminAccess'
 import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import HomePage from './pages/HomePage'
-import AdminPages from './pages/AdminPages'
+import AdminLayout from './pages/AdminLayout'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import UploadPage from './pages/UploadPage'
@@ -88,7 +88,7 @@ export default function App() {
       <Route
         path="/admin"
         element={
-          <AdminPages
+          <AdminLayout
             currentUser={currentUser}
             authLoading={authLoading}
             onLogout={handleLogout}
@@ -98,7 +98,7 @@ export default function App() {
       <Route
         path="/admin/:section"
         element={
-          <AdminPages
+          <AdminLayout
             currentUser={currentUser}
             authLoading={authLoading}
             onLogout={handleLogout}
