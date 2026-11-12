@@ -714,7 +714,7 @@
   font-style: normal;
 }
 
-.document-card__footer button {
+.document-card__footer a {
   display: inline-flex;
   min-height: 34px;
   padding: 7px 12px;
@@ -726,14 +726,15 @@
   color: #fff;
   background: #2868e7;
   font-size: 14px;
+  text-decoration: none;
   transition: background 150ms ease, transform 150ms ease;
 }
 
-.document-card__footer button:hover {
+.document-card__footer a:hover {
   background: #1555d4;
 }
 
-.document-card__footer button:active {
+.document-card__footer a:active {
   transform: translateY(1px);
 }
 
@@ -1000,7 +1001,7 @@
     display: block;
   }
 
-  .document-card__footer button {
+  .document-card__footer a {
     width: 100%;
     margin-top: 14px;
     justify-content: center;

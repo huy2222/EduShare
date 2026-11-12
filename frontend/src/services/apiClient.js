@@ -60,20 +60,20 @@ async function requestWithCsrf(path, buildOptions) {
   throw new ApiError('Yêu cầu không thành công.', undefined, 403)
 }
 
-export async function apiGet(path) {
+export async function apiGet(path, { credentials = 'include' } = {}) {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include' })
+    response = await fetch(`${API_BASE_URL}${path}`, { credentials })
   } catch {
     throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', undefined, 0)
   }
   return parseResponse(response)
 }
 
-export async function apiGetBlob(path) {
+export async function apiGetBlob(path, { credentials = 'include' } = {}) {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include' })
+    response = await fetch(`${API_BASE_URL}${path}`, { credentials })
   } catch {
     throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', undefined, 0)
   }

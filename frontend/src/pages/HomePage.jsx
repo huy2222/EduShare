@@ -1,6 +1,7 @@
 import { canEnterAdmin } from '../services/adminAccess'
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { PublishedDocumentList } from '../components/DocumentCards'
 import brandMark from '../assets/brand-mark.svg'
 import '../styles/home.css'
 
@@ -31,54 +32,6 @@ const courses = [
       'Nghiên cứu các cấu trúc dữ liệu nâng cao, thuật toán sắp xếp, tìm kiếm và phân tích độ phức tạp.',
     faculty: 'Khoa Công nghệ Thông tin',
     documents: 142,
-  },
-]
-
-const documents = [
-  {
-    id: 1,
-    type: 'SLIDE',
-    rating: '4.9',
-    reviews: 48,
-    title:
-      'Tổng hợp Slide Lý thuyết Lập trình Hướng đối tượng Java (Full 15 buổi)',
-    description:
-      'Bao gồm toàn bộ kiến thức từ cơ bản đến nâng cao: Class, Object, Inheritance, Polymorphism, Exception...',
-    author: 'Nguyễn Văn Nam',
-    date: '12/10/2024',
-    downloads: '3,420',
-    size: '14.2 MB',
-    pages: 45,
-  },
-  {
-    id: 2,
-    type: 'SLIDE',
-    rating: '4.9',
-    reviews: 48,
-    title:
-      'Tổng hợp Slide Lý thuyết Lập trình Hướng đối tượng Java (Full 15 buổi)',
-    description:
-      'Bao gồm toàn bộ kiến thức từ cơ bản đến nâng cao: Class, Object, Inheritance, Polymorphism, Exception...',
-    author: 'Nguyễn Văn Nam',
-    date: '12/10/2024',
-    downloads: '3,420',
-    size: '14.2 MB',
-    pages: 45,
-  },
-  {
-    id: 3,
-    type: 'SLIDE',
-    rating: '4.9',
-    reviews: 48,
-    title:
-      'Tổng hợp Slide Lý thuyết Lập trình Hướng đối tượng Java (Full 15 buổi)',
-    description:
-      'Bao gồm toàn bộ kiến thức từ cơ bản đến nâng cao: Class, Object, Inheritance, Polymorphism, Exception...',
-    author: 'Nguyễn Văn Nam',
-    date: '12/10/2024',
-    downloads: '3,420',
-    size: '14.2 MB',
-    pages: 45,
   },
 ]
 
@@ -307,45 +260,15 @@ function CourseCard({ course }) {
   )
 }
 
-function DocumentCard({ document }) {
-  return (
-    <article className="document-card">
-      <div className="document-card__topline">
-        <span className="document-card__type">{document.type}</span>
-        <span className="document-card__rating">
-          <b aria-hidden="true">★</b> {document.rating}{' '}
-          <span>({document.reviews})</span>
-        </span>
-      </div>
-      <h3>{document.title}</h3>
-      <p className="document-card__description">{document.description}</p>
-      <div className="document-card__author">
-        <span className="document-card__avatar">N</span>
-        <span>{document.author}</span>
-        <time dateTime="2024-10-12">{document.date}</time>
-      </div>
-      <div className="document-card__footer">
-        <span className="document-card__stats">
-          <Icon name="download" size={16} />
-          {document.downloads} lượt tải <i>•</i> {document.size} <i>•</i>{' '}
-          {document.pages} trang
-        </span>
-        <button type="button">
-          <Icon name="eye" size={17} />
-          Xem nhanh
-        </button>
-      </div>
-    </article>
-  )
-}
-
 export default function HomePage({
   authenticated = false,
   currentUser,
   onLogout = () => {},
 }) {
-  const [searchInput, setSearchInput] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const searchTerm = searchParams.get('query') || ''
+  const [searchInput, setSearchInput] = useState(searchTerm)
+  useEffect(() => setSearchInput(searchTerm), [searchTerm])
   const [subject, setSubject] = useState('all')
 
   const filteredCourses = useMemo(() => {
@@ -361,9 +284,10 @@ export default function HomePage({
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    setSearchTerm(searchInput)
+    const query = searchInput.trim()
+    setSearchParams(query ? { query } : {})
     document
-      .querySelector('#popular-courses')
+      .querySelector('#documents-title')
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -450,14 +374,9 @@ export default function HomePage({
             aria-labelledby="documents-title"
           >
             <div className="home-section__header home-section__header--documents">
-              <h2 id="documents-title">Tài liệu nổi bật &amp; Mới tải lên</h2>
-              <SectionLink>Xem thêm</SectionLink>
+              <h2 id="documents-title">Tài liệu đã duyệt</h2>
             </div>
-            <div className="home-grid home-grid--documents">
-              {documents.map((document) => (
-                <DocumentCard document={document} key={document.id} />
-              ))}
-            </div>
+            <PublishedDocumentList key={searchTerm} query={searchTerm} />
           </section>
         </section>
       </main>

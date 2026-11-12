@@ -1,8 +1,9 @@
 import { canEnterAdmin } from './services/adminAccess'
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import AdminLayout from './pages/AdminLayout'
+import DocumentDetailPage from './pages/DocumentDetailPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import UploadPage from './pages/UploadPage'
@@ -23,6 +24,12 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const navigate = useNavigate()
+  const { state } = useLocation()
+  const requestedPath = state?.returnTo
+  const returnTo = typeof requestedPath === 'string'
+    && (requestedPath === '/favorites' || /^\/documents\/[\da-f-]{36}$/i.test(requestedPath))
+    ? requestedPath
+    : null
 
   useEffect(() => {
     let active = true
@@ -49,7 +56,7 @@ export default function App() {
     try {
       const response = await getCurrentUser()
       setCurrentUser(response.result)
-      navigate(canEnterAdmin(response.result) ? '/admin' : '/', {
+      navigate(returnTo || (canEnterAdmin(response.result) ? '/admin' : '/'), {
         replace: true,
       })
     } catch {
@@ -75,7 +82,7 @@ export default function App() {
   const loginElement = authLoading
     ? null
     : authenticated
-      ? <Navigate to={authenticatedLandingPage} replace />
+      ? <Navigate to={returnTo || authenticatedLandingPage} replace />
       : <LoginPage onAuthenticated={handleAuthenticated} />
   const registerElement = authLoading
     ? null
@@ -107,6 +114,7 @@ export default function App() {
       />
       <Route path="/" element={<HomePage {...sharedProps} />} />
       <Route path="/explore" element={<HomePage {...sharedProps} />} />
+      <Route path="/documents/:id" element={<DocumentDetailPage {...sharedProps} />} />
       <Route path="/subjects" element={<HomePage {...sharedProps} />} />
       <Route
         path="/login"
@@ -144,7 +152,7 @@ export default function App() {
       />
       <Route
         path="/favorites"
-        element={<FavoriteDocumentsPage {...sharedProps} />}
+        element={<FavoriteDocumentsPage {...sharedProps} authLoading={authLoading} />}
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

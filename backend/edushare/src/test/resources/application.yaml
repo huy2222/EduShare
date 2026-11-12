@@ -47,3 +47,8 @@ cloudflare:
     access-key-id: test-access-key-id
     secret-access-key: test-secret-access-key
     bucket-name: test-bucket
+
+clamav:
+  host: localhost
+  port: 3310
+  timeout: 1000
