@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AdminPages from './AdminPages'
+import AdminLayout from './AdminLayout'
 import { getCurrentUser } from '../services/authApi'
 import * as api from '../services/adminApi'
 
@@ -32,7 +32,7 @@ function open(path) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/admin/:section?" element={<AdminPages />} />
+        <Route path="/admin/:section?" element={<AdminLayout />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -149,7 +149,7 @@ describe('Admin workspace', () => {
           <Route
             path="/admin"
             element={
-              <AdminPages
+              <AdminLayout
                 currentUser={{ id: 'admin', roles: ['ADMIN'] }}
                 authLoading={false}
               />
