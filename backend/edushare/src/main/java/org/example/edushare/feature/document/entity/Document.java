@@ -21,6 +21,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.example.edushare.feature.academic.entity.Subject;
 import org.example.edushare.feature.user.entity.User;
 
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
+@DynamicUpdate
 @Table(
         name = "documents",
         indexes = {
