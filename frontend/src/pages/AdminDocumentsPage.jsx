@@ -45,6 +45,8 @@ const moderationFileTypeLabels = {
   txt: "TXT",
 };
 
+const MODERATION_REFRESH_INTERVAL_MS = 5000;
+
 const formatFileSize = (bytes) => {
   if (!bytes) return "—";
   const units = ["B", "KB", "MB", "GB"];
@@ -115,9 +117,7 @@ export default function AdminDocumentsPage({ mode = "management" }) {
     setPreviewUrl("");
     const canLoadPreview =
       detail &&
-      (detail.type === "pdf" ||
-        ((detail.type === "doc" || detail.type === "docx") &&
-          detail.previewStatus === "AVAILABLE"));
+      (detail.type === "pdf" || detail.previewStatus === "AVAILABLE");
     if (!canLoadPreview) return undefined;
     getModerationDocumentPreview(detail.id)
       .then((blob) => {
@@ -137,41 +137,74 @@ export default function AdminDocumentsPage({ mode = "management" }) {
 
   useEffect(() => {
     let active = true;
+    let requestInFlight = false;
+    let intervalId;
+    let initialLoadComplete = false;
+
+    const loadDocuments = ({ background = false } = {}) => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      if (!background) setLoading(true);
+
+      Promise.all([
+        getModerationDocuments({
+          page,
+          size: 10,
+          search: query.trim(),
+          status: isModeration ? "PENDING" : statusFilter,
+          fileType: typeFilter.toUpperCase(),
+          createdFrom:
+            periodFilter === "month"
+              ? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+                  .toLocaleDateString("en-CA")
+              : "",
+        }),
+        getModerationStats(),
+      ])
+        .then(([response, statsResponse]) => {
+          if (active) {
+            setDocuments(
+              (response.result?.items || []).map(normalizeModerationDocument),
+            );
+            setTotal(response.result?.totalElements || 0);
+            setStats(statsResponse.result);
+            setError("");
+          }
+        })
+        .catch((requestError) => active && setError(requestError.message))
+        .finally(() => {
+          requestInFlight = false;
+          if (active && !background) setLoading(false);
+        });
+    };
+
+    const refreshInBackground = () => {
+      if (document.visibilityState === "visible") {
+        loadDocuments({ background: true });
+      }
+    };
+
     const timer = setTimeout(() => {
-    setLoading(true);
-    Promise.all([
-      getModerationDocuments({
-        page,
-        size: 10,
-        search: query.trim(),
-        status: isModeration ? "PENDING" : statusFilter,
-        fileType: typeFilter.toUpperCase(),
-        createdFrom:
-          periodFilter === "month"
-            ? new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-                .toLocaleDateString("en-CA")
-            : "",
-      }),
-      getModerationStats(),
-    ])
-      .then(([response, statsResponse]) => {
-        if (active) {
-          setDocuments(
-            (response.result?.items || []).map(normalizeModerationDocument),
-          );
-          setTotal(response.result?.totalElements || 0);
-          setStats(statsResponse.result);
-          setError("");
-        }
-      })
-      .catch((requestError) => active && setError(requestError.message))
-      .finally(() => active && setLoading(false));
+      loadDocuments();
+      initialLoadComplete = true;
+      if (isModeration) {
+        intervalId = window.setInterval(
+          refreshInBackground,
+          MODERATION_REFRESH_INTERVAL_MS,
+        );
+        document.addEventListener("visibilitychange", refreshInBackground);
+      }
     }, query ? 250 : 0);
+
     return () => {
       active = false;
       clearTimeout(timer);
+      if (initialLoadComplete && isModeration) {
+        window.clearInterval(intervalId);
+        document.removeEventListener("visibilitychange", refreshInBackground);
+      }
     };
-  }, [reload, page, query, statusFilter, typeFilter, periodFilter]);
+  }, [reload, page, query, statusFilter, typeFilter, periodFilter, isModeration]);
 
   const visible = documents;
   const selectable = visible.filter(
@@ -560,8 +593,7 @@ export default function AdminDocumentsPage({ mode = "management" }) {
               <main className="moderation-document-viewer">
                 <div className="moderation-viewer-canvas">
                   {detail.type === "pdf" ||
-                  ((detail.type === "doc" || detail.type === "docx") &&
-                    detail.previewStatus === "AVAILABLE") ? (
+                  detail.previewStatus === "AVAILABLE" ? (
                     previewUrl ? (
                       <iframe
                         title={`Xem trước ${detail.title}`}
@@ -582,7 +614,7 @@ export default function AdminDocumentsPage({ mode = "management" }) {
                       <span>…</span>
                       <b>Đang tạo bản xem trước PDF</b>
                       <small>
-                        LibreOffice đang chuyển đổi tệp Word sau khi quét virus.
+                        LibreOffice đang chuyển đổi tài liệu sau khi quét virus.
                       </small>
                     </div>
                   ) : detail.previewStatus === "FAILED" ? (

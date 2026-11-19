@@ -5,6 +5,7 @@ import org.example.edushare.feature.document.entity.Document;
 import org.example.edushare.feature.document.entity.DocumentStatus;
 import org.example.edushare.feature.document.entity.ScanStatus;
 import org.example.edushare.feature.document.repository.DocumentRepository;
+import org.example.edushare.feature.notification.service.NotificationService;
 import org.example.edushare.infrastructure.storage.R2StorageService;
 import org.springframework.stereotype.Service;
 
@@ -21,9 +22,10 @@ public class DocumentVirusScanService {
     private final DocumentRepository documentRepository;
     private final R2StorageService storageService;
     private final VirusScanService virusScanService;
+    private final NotificationService notificationService;
 
     public void scanDocument(UUID documentId) {
-        Document document = documentRepository.findById(documentId).orElse(null);
+        Document document = documentRepository.findDetailedById(documentId).orElse(null);
         if (document == null || document.getScanStatus() != ScanStatus.PENDING) {
             return;
         }
@@ -38,15 +40,22 @@ public class DocumentVirusScanService {
                 document.setScanStatus(ScanStatus.INFECTED);
                 document.setStatus(DocumentStatus.REJECTED);
                 documentRepository.save(document);
-                return;
+            } else {
+                document.setFileUrl(storageService.promoteFromQuarantine(document.getFileUrl()));
+                document.setScanStatus(ScanStatus.CLEAN);
+                documentRepository.save(document);
             }
-
-            document.setFileUrl(storageService.promoteFromQuarantine(document.getFileUrl()));
-            document.setScanStatus(ScanStatus.CLEAN);
-            documentRepository.save(document);
         } catch (IOException | RuntimeException exception) {
             document.setScanStatus(ScanStatus.FAILED);
             documentRepository.save(document);
+            return;
+        }
+
+        if (document.getScanStatus() == ScanStatus.INFECTED) {
+            notificationService.notifyVirusRejected(document);
+        } else {
+            notificationService.notifyScanCompleted(document);
+            notificationService.notifyPendingReview(document);
         }
     }
 }

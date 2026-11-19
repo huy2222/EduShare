@@ -18,6 +18,7 @@ import org.example.edushare.feature.document.repository.DocumentModerationReposi
 import org.example.edushare.feature.document.repository.DocumentRepository;
 import org.example.edushare.feature.user.entity.User;
 import org.example.edushare.feature.user.repository.UserRepository;
+import org.example.edushare.feature.notification.service.NotificationService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -42,6 +43,7 @@ public class DocumentModerationService {
     private final DocumentRepository documentRepository;
     private final DocumentModerationRepository moderationRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     @PreAuthorize("@adminAuthorization.has('DOCUMENT_APPROVE', 'DOCUMENT_REJECT', 'APPROVE_DOCUMENT', 'DOCUMENT_HIDE')")
@@ -136,7 +138,13 @@ public class DocumentModerationService {
                 .reason(reason)
                 .build();
 
-        return moderationRepository.save(moderation);
+        DocumentModeration saved = moderationRepository.save(moderation);
+        if (request.getAction() == ModerationAction.APPROVED
+                || request.getAction() == ModerationAction.REJECTED) {
+            notificationService.notifyModerationResult(
+                    document, request.getAction() == ModerationAction.APPROVED, reason);
+        }
+        return saved;
     }
 
     @Transactional(readOnly = true)

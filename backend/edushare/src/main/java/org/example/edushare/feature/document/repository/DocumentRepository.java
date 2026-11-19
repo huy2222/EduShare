@@ -16,6 +16,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.Optional;
 import java.time.LocalDateTime;
@@ -108,6 +109,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     List<Document> findTop10ByPreviewStatusAndScanStatusOrderByCreatedAtAsc(
             PreviewStatus previewStatus,
             org.example.edushare.feature.document.entity.ScanStatus scanStatus);
+
+    List<Document> findTop10ByPreviewStatusAndScanStatusAndFileTypeInOrderByCreatedAtAsc(
+            PreviewStatus previewStatus,
+            ScanStatus scanStatus,
+            Collection<FileType> fileTypes);
 
     List<Document> findTop10ByScanStatusOrderByCreatedAtAsc(
             org.example.edushare.feature.document.entity.ScanStatus scanStatus);

@@ -57,4 +57,5 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmailForUpdate(@Param("email") String email);
 
     List<User> findAllByRoles_Id(String roleId);
+    List<User> findDistinctByRoles_Name(String roleName);
 }
