@@ -21,6 +21,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -118,13 +120,14 @@ class DocumentServiceTest {
         assertEquals(subject, result.getSubject());
     }
 
-    @Test
-    void createQueuesCleanWordDocumentForPdfPreview() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"})
+    void createQueuesOfficeDocumentForPdfPreview(String extension) throws IOException {
         User uploader = User.builder().id("user-id").email("student@example.com").build();
         Major major = Major.builder().id("major-id").build();
         Subject subject = Subject.builder().id("subject-id").code("INT1301").name("Data Structures").credits(3).build();
-        MockMultipartFile file = new MockMultipartFile("file", "lecture.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content".getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "lecture." + extension,
+                "application/octet-stream", "content".getBytes());
         DocumentCreateRequest request = DocumentCreateRequest.builder()
                 .title("Lecture 1").documentType(DocumentType.LECTURE_NOTE)
                 .facultyId("faculty-id").majorId("major-id").subjectId("subject-id").build();
@@ -133,7 +136,7 @@ class DocumentServiceTest {
         when(facultyRepository.existsById("faculty-id")).thenReturn(true);
         when(majorRepository.findByIdAndFacultyId("major-id", "faculty-id")).thenReturn(Optional.of(major));
         when(subjectRepository.findByIdAndMajorId("subject-id", "major-id")).thenReturn(Optional.of(subject));
-        when(storageService.uploadToQuarantine(file)).thenReturn("quarantine/generated.docx");
+        when(storageService.uploadToQuarantine(file)).thenReturn("quarantine/generated." + extension);
         when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Document result = documentService.create(request, file);

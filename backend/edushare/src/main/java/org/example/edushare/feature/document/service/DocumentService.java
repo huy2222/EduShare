@@ -199,6 +199,9 @@ public class DocumentService {
     }
 
     private boolean requiresPdfPreview(FileType fileType) {
-        return fileType == FileType.DOC || fileType == FileType.DOCX;
+        return switch (fileType) {
+            case DOC, DOCX, PPT, PPTX, XLS, XLSX -> true;
+            default -> false;
+        };
     }
 }

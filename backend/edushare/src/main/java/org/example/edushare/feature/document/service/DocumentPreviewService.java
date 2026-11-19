@@ -37,7 +37,7 @@ public class DocumentPreviewService {
     public void generatePreview(UUID documentId) {
         Document document = documentRepository.findById(documentId).orElse(null);
         if (document == null || document.getPreviewStatus() != PreviewStatus.PENDING
-                || document.getScanStatus() != ScanStatus.CLEAN || !isWordDocument(document)) {
+                || document.getScanStatus() != ScanStatus.CLEAN || !isOfficeDocument(document)) {
             return;
         }
 
@@ -100,8 +100,11 @@ public class DocumentPreviewService {
         return response.body();
     }
 
-    private boolean isWordDocument(Document document) {
-        return document.getFileType() == FileType.DOC || document.getFileType() == FileType.DOCX;
+    private boolean isOfficeDocument(Document document) {
+        return switch (document.getFileType()) {
+            case DOC, DOCX, PPT, PPTX, XLS, XLSX -> true;
+            default -> false;
+        };
     }
 
     private byte[] createMultipartRequest(String boundary, String fileName, byte[] source) throws IOException {

@@ -12,6 +12,7 @@ import AdminOverviewPage from "./AdminOverviewPage";
 import AdminUsersPage from "./AdminUsersPage";
 import { adminSections } from "./adminSections";
 import "../styles/admin.css";
+import NotificationBell from "../components/NotificationBell";
 
 export default function AdminLayout({
   onLogout,
@@ -113,6 +114,7 @@ export default function AdminLayout({
             {sidebarCollapsed ? "☰" : "←"}
           </button>
           <span>Admin Workspace</span>
+          <NotificationBell className="admin-notification" />
           <div>
             <span className="admin-avatar">
               {(user.fullName || "A").slice(0, 1)}

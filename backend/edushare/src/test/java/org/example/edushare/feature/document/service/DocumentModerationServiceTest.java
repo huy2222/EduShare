@@ -10,6 +10,7 @@ import org.example.edushare.feature.document.repository.DocumentModerationReposi
 import org.example.edushare.feature.document.repository.DocumentRepository;
 import org.example.edushare.feature.user.entity.User;
 import org.example.edushare.feature.user.repository.UserRepository;
+import org.example.edushare.feature.notification.service.NotificationService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,13 +43,15 @@ class DocumentModerationServiceTest {
     private DocumentModerationRepository moderationRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private NotificationService notificationService;
 
     private DocumentModerationService moderationService;
 
     @BeforeEach
     void setUp() {
         moderationService = new DocumentModerationService(
-                documentRepository, moderationRepository, userRepository
+                documentRepository, moderationRepository, userRepository, notificationService
         );
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(

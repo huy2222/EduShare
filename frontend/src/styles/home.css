@@ -177,15 +177,22 @@
   background: #f0f3f7;
 }
 
-.home-notification span {
+.home-notification .notification-badge {
   position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 7px;
-  height: 7px;
-  border: 1.5px solid #fafbfd;
-  border-radius: 50%;
+  top: -3px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fafbfd;
+  border-radius: 999px;
   background: #d31e2f;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
 }
 
 .home-profile {

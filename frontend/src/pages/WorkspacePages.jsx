@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ProfileIcon, ProfileShell } from './ProfilePages'
+import { useNotifications } from '../components/NotificationProvider'
 import '../styles/workspace.css'
 
 const downloadItems = [
@@ -7,14 +9,6 @@ const downloadItems = [
   { type: 'DOC', tone: 'blue', title: 'Đề thi cuối kỳ Toán cao cấp A1 (Có lời giải chi tiết)', subject: 'Toán học', size: '2.1 MB', time: 'Đã tải Hôm qua' },
   { type: 'ZIP', tone: 'sky', title: 'Source code bài tập lớn Cơ sở dữ liệu - Quản lý thư viện', subject: 'Công nghệ thông tin', size: '48.5 MB', time: 'Đã tải 3 ngày trước' },
   { type: 'PDF', tone: 'red', title: 'Slide bài giảng Kinh tế chính trị Mác - Lênin (Chương 1 đến 5)', subject: 'Triết học', size: '8.2 MB', time: 'Đã tải 5 ngày trước' },
-]
-
-const initialNotifications = [
-  { id: 1, type: 'approved', icon: 'check', title: 'Tài liệu đã được phê duyệt', time: '10 phút trước', unread: true, text: <>Tài liệu “Giáo trình Giải tích 1 - ĐHBK” của bạn đã được kiểm duyệt thành công và hiện đã công khai trên hệ thống.</>, action: 'Xem tài liệu', actionTone: 'blue' },
-  { id: 2, type: 'comment', icon: 'comment', title: 'Bình luận mới trong bài viết', time: '1 giờ trước', unread: true, text: <><strong>Nguyễn Văn A</strong> đã để lại một bình luận trên tài liệu <strong>“Đề thi thử Cấu trúc dữ liệu và Giải thuật”</strong>: “Cảm ơn bạn nhiều lắm, tài liệu rất hữu ích cho kỳ thi sắp tới!”</>, action: 'Xem bình luận', actionTone: 'gray' },
-  { id: 3, type: 'warning', icon: 'alert', title: 'Tài liệu cần chỉnh sửa', time: '3 giờ trước', unread: true, text: <>Tài liệu “Báo cáo Thực tập cơ sở” chưa được duyệt do chất lượng ảnh chụp scan chưa rõ nét. Vui lòng cập nhật lại file PDF.</>, action: 'Chỉnh sửa ngay', actionTone: 'red' },
-  { id: 4, type: 'mention', icon: 'at', title: 'Bạn được nhắc đến trong một phản hồi', time: 'Hôm qua', unread: false, text: <><strong>Trần Thị B</strong> đã nhắc đến bạn trong một thảo luận tại môn <strong>Vật lý đại cương 2</strong>: “@Student bạn có tài liệu chương 3 phần<br />từ trường không cho mình xin với.”</>, action: 'Xem phản hồi', actionTone: 'gray' },
-  { id: 5, type: 'update', icon: 'bookmark', title: 'Cập nhật tài liệu môn học quan tâm', time: '2 ngày trước', unread: false, text: <>Môn học “Lập trình hướng đối tượng (IT1030)” bạn đang theo dõi vừa có 5 tài liệu ôn thi học kỳ mới được tải lên.</>, action: 'Khám phá môn học', actionTone: 'gray' },
 ]
 
 function WorkspaceIcon({ name, size = 18 }) {
@@ -82,24 +76,49 @@ export function DownloadHistoryPage({ authenticated = false, onLogout = () => {}
 
 export function NotificationsPage({ authenticated = false, onLogout = () => {} }) {
   const [filter, setFilter] = useState('all')
-  const [notifications, setNotifications] = useState(initialNotifications)
-  const unreadCount = notifications.filter((notification) => notification.unread).length
+  const [selectedNotificationId, setSelectedNotificationId] = useState(null)
+  const navigate = useNavigate()
+  const {
+    notifications, unreadCount, loading, error,
+    loadNotifications, markRead, markAllRead,
+  } = useNotifications()
+
+  useEffect(() => {
+    loadNotifications()
+  }, [loadNotifications])
 
   const visibleNotifications = useMemo(() => {
-    if (filter === 'unread') return notifications.filter((notification) => notification.unread)
-    if (filter === 'read') return notifications.filter((notification) => !notification.unread)
+    if (filter === 'unread') return notifications.filter((notification) => !notification.read)
+    if (filter === 'read') return notifications.filter((notification) => notification.read)
     return notifications
   }, [filter, notifications])
 
-  const markAsRead = (id) => {
-    setNotifications((current) => current.map((notification) => notification.id === id ? { ...notification, unread: false } : notification))
+  const selectedNotification = notifications.find(
+    (notification) => notification.id === selectedNotificationId,
+  ) || null
+
+  const display = (notification) => {
+    const pending = notification.type === 'DOCUMENT_PENDING_REVIEW'
+    const rejected = ['DOCUMENT_REJECTED', 'DOCUMENT_REJECTED_VIRUS'].includes(notification.type)
+    return {
+      type: pending ? 'update' : rejected ? 'warning' : 'approved',
+      icon: pending ? 'bookmark' : rejected ? 'alert' : 'check',
+      action: pending ? 'Mở hàng chờ duyệt' : notification.type === 'DOCUMENT_APPROVED' ? 'Xem tài liệu' : null,
+      actionTone: rejected ? 'red' : 'blue',
+      target: pending ? '/admin/moderation' : notification.type === 'DOCUMENT_APPROVED' ? `/documents/${notification.documentId}` : null,
+    }
+  }
+
+  const openDetail = (notification) => {
+    setSelectedNotificationId(notification.id)
+    if (!notification.read) markRead(notification.id)
   }
 
   return (
     <ProfileShell activeSidebar="notifications" authenticated={authenticated} onLogout={onLogout}>
       <div className="notifications-heading">
         <div><h1>Thông báo</h1>{unreadCount > 0 && <span>{unreadCount} chưa đọc</span>}</div>
-        <button onClick={() => setNotifications((current) => current.map((notification) => ({ ...notification, unread: false })))} type="button"><WorkspaceIcon name="doubleCheck" size={17} /> Đánh dấu tất cả là đã đọc</button>
+        <button disabled={unreadCount === 0} onClick={() => markAllRead()} type="button"><WorkspaceIcon name="doubleCheck" size={17} /> Đánh dấu tất cả là đã đọc</button>
       </div>
 
       <div className="notification-tabs" role="tablist" aria-label="Bộ lọc thông báo">
@@ -109,18 +128,122 @@ export function NotificationsPage({ authenticated = false, onLogout = () => {} }
       </div>
 
       <section className="notification-list" aria-live="polite">
-        {visibleNotifications.map((notification) => (
-          <article className={`notification-item notification-item--${notification.type}${notification.unread ? ' notification-item--unread' : ''}`} key={notification.id}>
-            <span className="notification-item__icon"><WorkspaceIcon name={notification.icon} size={21} /></span>
-            <div>
-              <header><h2>{notification.title}</h2><time>{notification.time}</time>{notification.unread && <i aria-label="Chưa đọc" />}</header>
-              <p>{notification.text}</p>
-              <footer><button className={`notification-action notification-action--${notification.actionTone}`} type="button">{notification.action}</button>{notification.unread && <button onClick={() => markAsRead(notification.id)} type="button">Đánh dấu đã đọc</button>}</footer>
-            </div>
-          </article>
-        ))}
-        {visibleNotifications.length === 0 && <div className="notification-empty">Không có thông báo trong mục này.</div>}
+        {loading && notifications.length === 0 && <div className="notification-empty">Đang tải thông báo…</div>}
+        {!loading && error && <div className="notification-empty" role="alert">{error}</div>}
+        {visibleNotifications.map((notification) => {
+          const view = display(notification)
+          return (
+            <article
+              aria-label={`Xem chi tiết: ${notification.title}`}
+              className={`notification-item notification-item--${view.type}${!notification.read ? ' notification-item--unread' : ''}`}
+              key={notification.id}
+              onClick={() => openDetail(notification)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  openDetail(notification)
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="notification-item__icon"><WorkspaceIcon name={view.icon} size={21} /></span>
+              <div>
+                <header><h2>{notification.title}</h2><time>{formatNotificationTime(notification.createdAt)}</time>{!notification.read && <i aria-label="Chưa đọc" />}</header>
+                <p>{notification.message}</p>
+                <footer>{view.action && <button className={`notification-action notification-action--${view.actionTone}`} onClick={(event) => { event.stopPropagation(); markRead(notification.id); navigate(view.target) }} type="button">{view.action}</button>}{!notification.read && <button onClick={(event) => { event.stopPropagation(); markRead(notification.id) }} type="button">Đánh dấu đã đọc</button>}<button onClick={(event) => { event.stopPropagation(); openDetail(notification) }} type="button">Xem chi tiết</button></footer>
+              </div>
+            </article>
+          )
+        })}
+        {!loading && !error && visibleNotifications.length === 0 && <div className="notification-empty">Không có thông báo trong mục này.</div>}
       </section>
+      {selectedNotification && (
+        <NotificationDetailModal
+          notification={selectedNotification}
+          onClose={() => setSelectedNotificationId(null)}
+          onNavigate={(target) => {
+            setSelectedNotificationId(null)
+            navigate(target)
+          }}
+          view={display(selectedNotification)}
+        />
+      )}
     </ProfileShell>
   )
+}
+
+function NotificationDetailModal({ notification, view, onClose, onNavigate }) {
+  const dialogRef = useRef(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) {
+      if (typeof dialog.showModal === 'function') dialog.showModal()
+      else dialog.setAttribute('open', '')
+    }
+    return () => {
+      if (!dialog) return
+      if (typeof dialog.close === 'function') dialog.close()
+      else dialog.removeAttribute('open')
+    }
+  }, [])
+
+  return (
+    <dialog
+      aria-labelledby="notification-detail-title"
+      className={`notification-detail notification-detail--${view.type}`}
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+      ref={dialogRef}
+    >
+      <div className="notification-detail__panel">
+        <header>
+          <span className="notification-detail__icon"><WorkspaceIcon name={view.icon} size={24} /></span>
+          <div>
+            <small>CHI TIẾT THÔNG BÁO</small>
+            <h2 id="notification-detail-title">{notification.title}</h2>
+          </div>
+          <button aria-label="Đóng chi tiết thông báo" className="notification-detail__close" onClick={onClose} type="button">×</button>
+        </header>
+        <div className="notification-detail__body">
+          <p>{notification.message}</p>
+          <dl>
+            <div><dt>Thời gian</dt><dd>{formatNotificationDateTime(notification.createdAt)}</dd></div>
+            <div><dt>Trạng thái</dt><dd>{notification.read ? 'Đã đọc' : 'Chưa đọc'}</dd></div>
+          </dl>
+        </div>
+        <footer>
+          <button className="notification-detail__secondary" onClick={onClose} type="button">Đóng</button>
+          {view.action && <button className="notification-detail__primary" onClick={() => onNavigate(view.target)} type="button">{view.action}</button>}
+        </footer>
+      </div>
+    </dialog>
+  )
+}
+
+function formatNotificationTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
+  if (seconds < 60) return 'Vừa xong'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} phút trước`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} giờ trước`
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} ngày trước`
+  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(date)
+}
+
+function formatNotificationDateTime(value) {
+  if (!value) return 'Không xác định'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Không xác định'
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'full',
+    timeStyle: 'short',
+  }).format(date)
 }

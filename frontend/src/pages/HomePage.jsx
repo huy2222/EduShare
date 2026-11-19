@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { PublishedDocumentList } from '../components/DocumentCards'
 import brandMark from '../assets/brand-mark.svg'
 import '../styles/home.css'
+import NotificationBell from '../components/NotificationBell'
 
 const courses = [
   {
@@ -167,14 +168,7 @@ export function HomeHeader({
             </label>
           </form>
 
-          <Link
-            className="home-notification"
-            to="/notifications"
-            aria-label="Thông báo"
-          >
-            <Icon name="bell" size={19} />
-            <span aria-hidden="true" />
-          </Link>
+          {authenticated && <NotificationBell />}
 
           {authenticated ? (
             <div className="home-profile-menu">

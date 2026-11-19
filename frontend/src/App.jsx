@@ -18,6 +18,7 @@ import {
   FavoriteDocumentsPage,
 } from './pages/SettingsFavoritesPages'
 import { getCurrentUser, logout } from './services/authApi'
+import { NotificationProvider } from './components/NotificationProvider'
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false)
@@ -91,6 +92,7 @@ export default function App() {
       : <RegisterPage onAuthenticated={handleAuthenticated} />
 
   return (
+    <NotificationProvider authenticated={authenticated}>
     <Routes>
       <Route
         path="/admin"
@@ -156,5 +158,6 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </NotificationProvider>
   )
 }
