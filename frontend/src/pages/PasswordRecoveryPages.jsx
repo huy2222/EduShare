@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { HomeHeader } from './HomePage'
+import OtpVerificationPage from './OtpVerificationPage'
+import { requestPasswordReset, resetPassword, verifyPasswordResetOtp } from '../services/authApi'
 import '../styles/recovery.css'
 
 function RecoveryIcon({ name, size = 20 }) {
@@ -62,10 +64,15 @@ function RecoveryCardHeader({ id, title, description }) {
 export function ForgotPasswordPage({ authenticated = false, onLogout = () => {} }) {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    navigate('/reset-password')
+    setError('')
+    const normalizedEmail = email.trim()
+    // Show the OTP screen immediately. The email request continues in the background.
+    requestPasswordReset(normalizedEmail).catch(() => {})
+    navigate(`/reset-password/otp?email=${encodeURIComponent(normalizedEmail)}`)
   }
 
   return (
@@ -93,6 +100,7 @@ export function ForgotPasswordPage({ authenticated = false, onLogout = () => {} 
             </span>
           </label>
 
+          {error && <p className="recovery-error" role="alert">{error}</p>}
           <button className="recovery-submit" type="submit">
             Gửi mã xác thực
             <RecoveryIcon name="arrowRight" size={17} />
@@ -105,6 +113,55 @@ export function ForgotPasswordPage({ authenticated = false, onLogout = () => {} 
         </Link>
       </section>
     </RecoveryShell>
+  )
+}
+
+export function PasswordResetOtpPage({ authenticated = false, onLogout = () => {} }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const email = new URLSearchParams(location.search).get('email') || ''
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+
+  const handleVerify = async (otp) => {
+    setError('')
+    setMessage('')
+    setSubmitting(true)
+    try {
+      await verifyPasswordResetOtp(email.trim(), otp.trim())
+      navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`)
+    } catch (requestError) {
+      setError(requestError.message || 'Mã OTP không đúng hoặc đã hết hạn.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleResend = async () => {
+    setError('')
+    setMessage('')
+    try {
+      await requestPasswordReset(email.trim())
+      setMessage('Mã OTP mới đã được gửi tới email của bạn.')
+      return true
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể gửi lại mã OTP.')
+      return false
+    }
+  }
+
+  return (
+    <OtpVerificationPage
+      email={email}
+      error={error}
+      message={message}
+      onBack={() => navigate('/forgot-password')}
+      onResend={handleResend}
+      onVerify={handleVerify}
+      backLabel="Nhập lại email"
+      submitting={submitting}
+    />
   )
 }
 
@@ -138,10 +195,42 @@ function PasswordField({ id, label, value, onChange, visible, onToggle, autoComp
 }
 
 export function ResetPasswordPage({ authenticated = false, onLogout = () => {} }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const emailFromQuery = new URLSearchParams(location.search).get('email') || ''
+  const [email, setEmail] = useState(emailFromQuery)
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setError('')
+    setSuccess('')
+    if (password !== confirmation) {
+      setError('Mật khẩu xác nhận không khớp.')
+      return
+    }
+    if (!/[A-Z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setError('Mật khẩu phải có chữ hoa, chữ số và ký tự đặc biệt.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await resetPassword(email.trim(), password)
+      setSuccess('Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.')
+      setTimeout(() => navigate('/login', { replace: true }), 1200)
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <RecoveryShell authenticated={authenticated} onLogout={onLogout}>
@@ -152,7 +241,22 @@ export function ResetPasswordPage({ authenticated = false, onLogout = () => {} }
           description={<>Vui lòng nhập mật khẩu mới cho tài khoản của<br />bạn</>}
         />
 
-        <form className="recovery-form" onSubmit={(event) => event.preventDefault()}>
+        <form className="recovery-form" onSubmit={handleSubmit}>
+          <label className="recovery-field" htmlFor="reset-email">
+            <span>Email trường học</span>
+            <span className="recovery-field__control">
+              <RecoveryIcon name="mail" size={17} />
+              <input
+                autoComplete="email"
+                id="reset-email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="email@university.edu.vn"
+                required
+                type="email"
+                value={email}
+              />
+            </span>
+          </label>
           <PasswordField
             autoComplete="new-password"
             id="new-password"
@@ -182,7 +286,9 @@ export function ResetPasswordPage({ authenticated = false, onLogout = () => {} }
             </ul>
           </div>
 
-          <button className="recovery-submit" type="submit">
+          {error && <p className="recovery-error" role="alert">{error}</p>}
+          {success && <p className="recovery-success" role="status">{success}</p>}
+          <button className="recovery-submit" disabled={submitting} type="submit">
             Cập nhật mật khẩu
             <RecoveryIcon name="arrowRight" size={17} />
           </button>

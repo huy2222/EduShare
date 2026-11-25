@@ -11,8 +11,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.EnumSet;
 import java.util.Set;
-
-/** Keeps web requests fast by converting clean Office files in the background. */
 @Component
 @RequiredArgsConstructor
 public class DocumentPreviewWorker {

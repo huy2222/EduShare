@@ -175,6 +175,27 @@
   background: #0753c7;
 }
 
+.recovery-submit:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.recovery-error,
+.recovery-success {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.recovery-error {
+  color: #b42318;
+}
+
+.recovery-success {
+  color: #147a42;
+}
+
 .recovery-submit:active {
   transform: translateY(1px);
 }
