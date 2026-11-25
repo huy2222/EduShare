@@ -4,8 +4,10 @@ const publicRead = { credentials: 'omit' }
 const documentPath = (id) => `/library/documents/${encodeURIComponent(id)}`
 const interactionPath = (id) => `/library/me/documents/${encodeURIComponent(id)}`
 
-export function getPublishedDocuments(query, page) {
-  return apiGet(`/library/documents?${new URLSearchParams({ query, page })}`, publicRead)
+export function getPublishedDocuments(query = '', page = 0, filters = {}) {
+  const params = new URLSearchParams({ query, page })
+  Object.entries(filters).forEach(([key, value]) => { if (value !== '' && value != null) params.set(key, value) })
+  return apiGet(`/library/documents?${params}`, publicRead)
 }
 
 export function getPublishedDocument(id) {

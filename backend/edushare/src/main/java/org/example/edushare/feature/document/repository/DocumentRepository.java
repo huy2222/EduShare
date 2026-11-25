@@ -4,6 +4,7 @@ import jakarta.persistence.LockModeType;
 import org.example.edushare.feature.document.entity.Document;
 import org.example.edushare.feature.document.entity.DocumentStatus;
 import org.example.edushare.feature.document.entity.FileType;
+import org.example.edushare.feature.document.entity.DocumentType;
 import org.example.edushare.feature.document.entity.PreviewStatus;
 import org.example.edushare.feature.document.entity.ScanStatus;
 import org.springframework.data.domain.Page;
@@ -79,6 +80,49 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     Page<Document> searchPublished(@Param("status") DocumentStatus status,
                                    @Param("scanStatus") ScanStatus scanStatus,
                                    @Param("search") String search, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"uploader", "uploader.profile", "subject", "subject.faculty"})
+    @Query("""
+            select d from Document d join d.subject s left join s.faculty f
+            where d.status = :status and d.scanStatus = :scanStatus
+              and (:search = '' or lower(d.title) like concat('%', :search, '%')
+                   or lower(coalesce(d.description, '')) like concat('%', :search, '%')
+                   or lower(s.name) like concat('%', :search, '%') or lower(s.code) like concat('%', :search, '%'))
+              and (:subjectId is null or s.id = :subjectId)
+              and (:facultyId is null or f.id = :facultyId)
+              and (:majorId is null or exists (select m.id from Major m join m.subjects ms where ms.id = s.id and m.id = :majorId))
+              and (:documentType is null or d.documentType = :documentType)
+              and (:fileType is null or d.fileType = :fileType)
+            """)
+    Page<Document> browsePublished(@Param("search") String search, @Param("subjectId") String subjectId,
+                                   @Param("facultyId") String facultyId, @Param("majorId") String majorId,
+                                   @Param("documentType") DocumentType documentType, @Param("fileType") FileType fileType,
+                                   @Param("status") DocumentStatus status, @Param("scanStatus") ScanStatus scanStatus,
+                                   Pageable pageable);
+
+    interface SubjectCount {
+        String getSubjectId();
+        long getTotal();
+    }
+
+    @Query("""
+            select d.subject.id as subjectId, count(d) as total from Document d
+            where d.subject.id in :ids and d.status = :status and d.scanStatus = :scanStatus group by d.subject.id
+            """)
+    List<SubjectCount> countPublishedForSubjects(@Param("ids") Collection<String> ids,
+                                                @Param("status") DocumentStatus status, @Param("scanStatus") ScanStatus scanStatus);
+
+    interface TypeCount {
+        DocumentType getDocumentType();
+        long getTotal();
+    }
+
+    @Query("""
+            select d.documentType as documentType, count(d) as total from Document d
+            where d.subject.id = :subjectId and d.status = :status and d.scanStatus = :scanStatus group by d.documentType
+            """)
+    List<TypeCount> countPublishedTypes(@Param("subjectId") String subjectId,
+                                       @Param("status") DocumentStatus status, @Param("scanStatus") ScanStatus scanStatus);
 
     long countByUploaderIdAndStatusAndScanStatus(String uploaderId, DocumentStatus status, ScanStatus scanStatus);
 

@@ -50,7 +50,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/academic/**")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/library/documents", "/api/v1/library/documents/*",
-                        "/api/v1/library/documents/*/comments", "/api/v1/library/documents/*/preview")
+                        "/api/v1/library/documents/*/comments", "/api/v1/library/documents/*/preview",
+                        "/api/v1/library/subjects", "/api/v1/library/subjects/*")
                 .permitAll()
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")

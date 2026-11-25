@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public record PublishedDocumentResponse(
         UUID id, String title, String description, String fileName, long fileSize, FileType fileType,
-        DocumentType documentType, String author, String subjectCode, String subjectName, String facultyName,
+        DocumentType documentType, String author, String subjectId, String subjectCode, String subjectName, String facultyName,
         LocalDateTime createdAt, long views, long downloads, double averageRating
 ) {
     public static PublishedDocumentResponse from(Document document) {
@@ -19,7 +19,7 @@ public record PublishedDocumentResponse(
         return new PublishedDocumentResponse(
                 document.getId(), document.getTitle(), document.getDescription(), document.getFileName(),
                 document.getFileSize(), document.getFileType(), document.getDocumentType(),
-                displayName(document.getUploader()), subject.getCode(), subject.getName(),
+                displayName(document.getUploader()), subject.getId(), subject.getCode(), subject.getName(),
                 subject.getFaculty() == null ? null : subject.getFaculty().getName(),
                 document.getCreatedAt(), document.getViewCount(), document.getDownloadCount(),
                 document.getAverageRating());
