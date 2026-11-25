@@ -4,7 +4,7 @@ import { formatDocumentDate, formatDocumentNumber, formatDocumentSize } from '..
 export default function DocumentSidebar({ document, uploader, relatedDocuments = [] }) {
   const name = uploader?.name || document.author
   const initials = name.trim().split(/\s+/).slice(-2).map((part) => part[0]).join('')
-  const subjectLink = `/explore?${new URLSearchParams({ query: document.subjectCode })}`
+  const subjectLink = document.subjectId ? `/subjects/${document.subjectId}` : `/explore?${new URLSearchParams({ query: document.subjectCode })}`
 
   return (
     <aside className="reader-sidebar">

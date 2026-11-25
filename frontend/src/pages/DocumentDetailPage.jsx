@@ -124,6 +124,7 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
   return (
     <div className="home-page document-reader">
       <HomeHeader
+        activePage="explore"
         authenticated={authenticated}
         currentUser={currentUser}
         onLogout={onLogout}
@@ -152,7 +153,7 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
             <section className="reader-panel reader-hero">
               <div>
                 <div className="reader-tags">
-                  <Link to={`/explore?${new URLSearchParams({ query: document.subjectCode })}`}>{document.subjectName} ({document.subjectCode})</Link>
+                  <Link to={document.subjectId ? `/subjects/${document.subjectId}` : `/explore?${new URLSearchParams({ query: document.subjectCode })}`}>{document.subjectName} ({document.subjectCode})</Link>
                   <span>{document.fileType}</span><span className="reader-approved">✓ Đã duyệt</span>
                 </div>
                 <h1>{document.title}</h1>

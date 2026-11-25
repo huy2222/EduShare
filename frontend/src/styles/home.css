@@ -788,14 +788,31 @@
 @media (max-width: 900px) {
   .home-header__inner {
     grid-template-columns: auto 1fr;
+    padding-top: 10px;
+    gap: 4px 16px;
   }
 
   .home-nav {
-    display: none;
+    display: flex;
+    grid-column: 1 / -1;
+    order: 3;
+    gap: 24px;
+    overflow-x: auto;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .home-brand { order: 1; }
+
+  .home-nav__link {
+    flex: 0 0 auto;
+    min-height: 44px;
+    font-size: .85rem;
   }
 
   .home-header__actions {
     min-width: 0;
+    order: 2;
   }
 
   .home-header__search {

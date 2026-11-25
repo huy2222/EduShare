@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { formatDocumentDate, formatDocumentNumber, formatDocumentSize } from '../services/documentDisplay'
+import { documentTypes, formatDocumentDate, formatDocumentNumber, formatDocumentSize } from '../services/documentDisplay'
 import { getPublishedDocuments } from '../services/libraryApi'
 
-export function DocumentCard({ document }) {
+export function DocumentCard({ document, showCategory = false }) {
   return (
     <article className="document-card">
       <div className="document-card__topline">
-        <span className="document-card__type">{document.fileType}</span>
+        <span className={`document-card__type${showCategory ? ` document-card__type--${document.documentType}` : ''}`}>{showCategory ? documentTypes[document.documentType] || document.fileType : document.fileType}</span>
         <span className="document-card__rating">
           <b aria-hidden="true">★</b> {formatDocumentNumber(document.averageRating)}/5
         </span>
