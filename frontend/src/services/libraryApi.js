@@ -19,12 +19,13 @@ export function getDocumentComments(id, page, { authenticated = false, parentId 
   return apiGet(`${path}/comments?${query}`, authenticated ? undefined : publicRead)
 }
 
-export function getDocumentPreview(id) {
-  return apiGetBlob(`${documentPath(id)}/preview`, publicRead)
+export function getDocumentPreview(id, { authenticated = false } = {}) {
+  const path = authenticated ? interactionPath(id) : documentPath(id)
+  return apiGetBlob(`${path}/preview`, authenticated ? undefined : publicRead)
 }
 
 export async function downloadPublishedDocument(id, fileName) {
-  const blob = await apiGetBlob(`${documentPath(id)}/download`, publicRead)
+  const blob = await apiGetBlob(`${documentPath(id)}/download`)
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

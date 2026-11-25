@@ -32,24 +32,23 @@ function useCommentPage(documentId, authenticated, parentId, enabled = true) {
   return { page, result, error, changePage, refresh }
 }
 
-function CommentForm({ documentId, parentId, onPosted, onCancel }) {
+function CommentForm({ documentId, parentId, onPosted, onCancel, notify }) {
   const inputId = useId()
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
-  const [error, setError] = useState('')
   const label = parentId ? 'Nội dung trả lời' : 'Bình luận của bạn'
 
   async function submit(event) {
     event.preventDefault()
     if (!draft.trim() || posting) return
     setPosting(true)
-    setError('')
     try {
       await postDocumentComment(documentId, draft.trim(), parentId)
       setDraft('')
       onPosted()
+      notify(parentId ? 'Đã gửi trả lời.' : 'Đã gửi bình luận.')
     } catch (err) {
-      setError(err.message)
+      notify(err.message, true)
     } finally {
       setPosting(false)
     }
@@ -67,27 +66,24 @@ function CommentForm({ documentId, parentId, onPosted, onCancel }) {
           {posting ? 'Đang gửi…' : parentId ? 'Gửi trả lời' : 'Gửi bình luận'}
         </button>
       </div>
-      {error && <p role="alert">{error}</p>}
     </form>
   )
 }
 
-function CommentItem({ documentId, comment, authenticated, loginLink, onReply }) {
+function CommentItem({ documentId, comment, authenticated, loginLink, onReply, notify }) {
   const [likes, setLikes] = useState(null)
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState('')
   const liked = likes?.liked ?? comment.liked ?? false
   const likeCount = likes?.likeCount ?? comment.likeCount ?? 0
 
   async function toggleLike() {
     if (pending) return
     setPending(true)
-    setError('')
     try {
       const { result } = await setDocumentCommentLike(documentId, comment.id, !liked)
       setLikes(result)
     } catch (err) {
-      setError(err.message)
+      notify(err.message, true)
     } finally {
       setPending(false)
     }
@@ -112,7 +108,6 @@ function CommentItem({ documentId, comment, authenticated, loginLink, onReply })
             ? <button type="button" onClick={onReply}>Trả lời</button>
             : loginLink('Trả lời'))}
         </div>
-        {error && <p role="alert">{error}</p>}
       </div>
     </div>
   )
@@ -127,7 +122,7 @@ function CommentPageStatus({ pagination, loading }) {
   return !pagination.result && <p role="status">{loading}</p>
 }
 
-function CommentThread({ documentId, comment, authenticated, loginLink }) {
+function CommentThread({ documentId, comment, authenticated, loginLink, notify }) {
   const [replying, setReplying] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [addedReplies, setAddedReplies] = useState(0)
@@ -137,11 +132,11 @@ function CommentThread({ documentId, comment, authenticated, loginLink }) {
 
   return (
     <li>
-      <CommentItem documentId={documentId} comment={comment} authenticated={authenticated} loginLink={loginLink}
+      <CommentItem documentId={documentId} comment={comment} authenticated={authenticated} loginLink={loginLink} notify={notify}
         onReply={() => setReplying(true)} />
       {replying && authenticated && (
         <div className="reader-comment-thread">
-          <CommentForm documentId={documentId} parentId={comment.id}
+          <CommentForm documentId={documentId} parentId={comment.id} notify={notify}
             onCancel={() => setReplying(false)}
             onPosted={() => {
               setReplying(false)
@@ -165,7 +160,7 @@ function CommentThread({ documentId, comment, authenticated, loginLink }) {
               <ul className="reader-comments">
                 {replies.result.items.map((reply) => (
                   <li key={reply.id}>
-                    <CommentItem documentId={documentId} comment={reply} authenticated={authenticated} loginLink={loginLink} />
+                    <CommentItem documentId={documentId} comment={reply} authenticated={authenticated} loginLink={loginLink} notify={notify} />
                   </li>
                 ))}
               </ul>
@@ -178,14 +173,14 @@ function CommentThread({ documentId, comment, authenticated, loginLink }) {
   )
 }
 
-export default function DocumentComments({ documentId, authenticated, loginLink }) {
+export default function DocumentComments({ documentId, authenticated, loginLink, notify }) {
   const comments = useCommentPage(documentId, authenticated)
 
   return (
     <section className="reader-panel" aria-labelledby="document-comments-title">
       <h2 id="document-comments-title">Bình luận &amp; Thảo luận{comments.result ? ` (${comments.result.total})` : ''}</h2>
       {authenticated ? (
-        <CommentForm documentId={documentId} onPosted={() => comments.refresh(0)} />
+        <CommentForm documentId={documentId} onPosted={() => comments.refresh(0)} notify={notify} />
       ) : <p>{loginLink('Đăng nhập để bình luận')}</p>}
       <CommentPageStatus pagination={comments} loading="Đang tải bình luận…" />
       {comments.result && (
@@ -194,7 +189,7 @@ export default function DocumentComments({ documentId, authenticated, loginLink 
           <ul className="reader-comments">
             {comments.result.items.map((comment) => (
               <CommentThread key={comment.id} documentId={documentId} comment={comment}
-                authenticated={authenticated} loginLink={loginLink} />
+                authenticated={authenticated} loginLink={loginLink} notify={notify} />
             ))}
           </ul>
           <DocumentPagination page={comments.page} hasNext={comments.result.hasNext} onChange={comments.changePage} />
