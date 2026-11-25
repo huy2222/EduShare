@@ -10,9 +10,11 @@ import org.example.edushare.common.exception.AppException;
 import org.example.edushare.common.response.ApiResponse;
 import org.example.edushare.feature.auth.dto.request.GoogleLinkRequest;
 import org.example.edushare.feature.auth.dto.request.GoogleLoginRequest;
+import org.example.edushare.feature.auth.dto.request.ForgotPasswordRequest;
 import org.example.edushare.feature.auth.dto.request.LoginRequest;
 import org.example.edushare.feature.auth.dto.request.RegisterRequest;
 import org.example.edushare.feature.auth.dto.request.ResendOtpRequest;
+import org.example.edushare.feature.auth.dto.request.ResetPasswordRequest;
 import org.example.edushare.feature.auth.dto.request.VerifyEmailRequest;
 import org.example.edushare.feature.auth.dto.response.AuthenticationResponse;
 import org.example.edushare.feature.auth.dto.response.CsrfTokenResponse;
@@ -80,6 +82,30 @@ public class AuthenticationController {
         emailVerificationService.resendOtp(request.getEmail());
         return ApiResponse.<Void>builder()
                 .message("A new verification code has been sent")
+                .build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        emailVerificationService.requestPasswordReset(request.getEmail());
+        return ApiResponse.<Void>builder()
+                .message("If the account exists, a password reset code has been sent")
+                .build();
+    }
+
+    @PostMapping("/verify-password-reset-otp")
+    public ApiResponse<Void> verifyPasswordResetOtp(@Valid @RequestBody VerifyEmailRequest request) {
+        emailVerificationService.verifyPasswordResetOtp(request);
+        return ApiResponse.<Void>builder()
+                .message("Password reset code verified successfully")
+                .build();
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        emailVerificationService.resetPassword(request);
+        return ApiResponse.<Void>builder()
+                .message("Password has been reset successfully")
                 .build();
     }
 

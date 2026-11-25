@@ -23,6 +23,18 @@ export function resendVerificationCode(email) {
   return apiPostJson('/auth/resend-otp', { email })
 }
 
+export function requestPasswordReset(email) {
+  return apiPostJson('/auth/forgot-password', { email })
+}
+
+export function verifyPasswordResetOtp(email, otp) {
+  return apiPostJson('/auth/verify-password-reset-otp', { email, otp })
+}
+
+export function resetPassword(email, newPassword) {
+  return apiPostJson('/auth/reset-password', { email, newPassword })
+}
+
 export function loginWithGoogle(idToken) {
   return apiPostJson('/auth/google', { idToken })
 }

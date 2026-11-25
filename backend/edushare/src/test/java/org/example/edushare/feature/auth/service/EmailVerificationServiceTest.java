@@ -4,6 +4,7 @@ import org.example.edushare.common.exception.AppException;
 import org.example.edushare.common.exception.ErrorCode;
 import org.example.edushare.feature.auth.config.OtpProperties;
 import org.example.edushare.feature.auth.dto.request.VerifyEmailRequest;
+import org.example.edushare.feature.auth.dto.request.ResetPasswordRequest;
 import org.example.edushare.feature.auth.entity.EmailVerification;
 import org.example.edushare.feature.auth.entity.VerificationStatus;
 import org.example.edushare.feature.auth.entity.VerificationType;
@@ -19,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,6 +50,8 @@ class EmailVerificationServiceTest {
     EmailService emailService;
     @Mock
     OtpHasher otpHasher;
+    @Mock
+    PasswordEncoder passwordEncoder;
 
     EmailVerificationService service;
     OtpProperties properties;
@@ -66,7 +70,8 @@ class EmailVerificationServiceTest {
                 userRepository,
                 emailService,
                 otpHasher,
-                properties);
+                properties,
+                passwordEncoder);
     }
 
     @Test
@@ -243,6 +248,39 @@ class EmailVerificationServiceTest {
     }
 
     @Test
+    void passwordResetOtpIsSentOnlyForActiveUsers() {
+        User user = activeUser();
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
+        when(emailVerificationRepository.findFirstByUser_IdAndTypeOrderByCreatedAtDesc(
+                user.getId(), VerificationType.FORGOT_PASSWORD)).thenReturn(Optional.empty());
+        when(otpHasher.hash(anyString())).thenReturn("v1$salt$hash");
+
+        service.requestPasswordReset(user.getEmail());
+
+        verify(emailService).sendPasswordResetOtp(eq(user.getEmail()), anyString());
+        verify(emailVerificationRepository).save(any(EmailVerification.class));
+    }
+
+    @Test
+    void verifiedPasswordResetOtpAllowsPasswordChangeOnce() {
+        User user = activeUser();
+        EmailVerification verification = pendingVerification(user);
+        verification.setType(VerificationType.FORGOT_PASSWORD);
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
+        when(emailVerificationRepository.findFirstByUser_IdAndTypeOrderByCreatedAtDesc(
+                user.getId(), VerificationType.FORGOT_PASSWORD)).thenReturn(Optional.of(verification));
+        when(otpHasher.matches("123456", verification.getOtpHash())).thenReturn(true);
+        when(passwordEncoder.encode("NewPassword1!")).thenReturn("encoded-new-password");
+
+        service.verifyPasswordResetOtp(new VerifyEmailRequest(user.getEmail(), "123456"));
+        service.resetPassword(new ResetPasswordRequest(user.getEmail(), "NewPassword1!"));
+
+        assertEquals("encoded-new-password", user.getPassword());
+        assertEquals(VerificationStatus.EXPIRED, verification.getStatus());
+        assertNotNull(verification.getVerifiedAt());
+    }
+
+    @Test
     void secondVerificationRequestCannotConsumeSameOtp() {
         User user = pendingUser();
         EmailVerification verification = pendingVerification(user);
@@ -309,6 +347,15 @@ class EmailVerificationServiceTest {
                 .email("student@example.com")
                 .password("encoded-password")
                 .status(UserStatus.PENDING_VERIFICATION)
+                .build();
+    }
+
+    private User activeUser() {
+        return User.builder()
+                .id("user-id")
+                .email("student@example.com")
+                .password("encoded-password")
+                .status(UserStatus.ACTIVE)
                 .build();
     }
 

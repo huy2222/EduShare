@@ -7,7 +7,6 @@ import org.example.edushare.feature.document.service.DocumentVirusScanService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** Scans uploads outside the HTTP request so users are not kept waiting. */
 @Component
 @RequiredArgsConstructor
 public class DocumentScanWorker {

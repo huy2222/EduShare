@@ -12,6 +12,7 @@ import RegisterPage from './pages/RegisterPage'
 import UploadPage from './pages/UploadPage'
 import {
   ForgotPasswordPage,
+  PasswordResetOtpPage,
   ResetPasswordPage,
 } from './pages/PasswordRecoveryPages'
 import { EditProfilePage, ProfilePage } from './pages/ProfilePages'
@@ -134,6 +135,10 @@ export default function App() {
       <Route
         path="/forgot-password"
         element={<ForgotPasswordPage {...sharedProps} />}
+      />
+      <Route
+        path="/reset-password/otp"
+        element={<PasswordResetOtpPage {...sharedProps} />}
       />
       <Route
         path="/reset-password"

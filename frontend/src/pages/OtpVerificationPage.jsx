@@ -20,6 +20,7 @@ export default function OtpVerificationPage({
   submitting = false,
   error = '',
   message = '',
+  backLabel = 'Quay lại đăng nhập',
 }) {
   const [otp, setOtp] = useState('')
   const [secondsRemaining, setSecondsRemaining] = useState(59)
@@ -86,7 +87,7 @@ export default function OtpVerificationPage({
 
           <button className="otp-card__back" type="button" onClick={onBack}>
             <img src={arrowLeft} alt="" width="12" height="12" />
-            <span>Quay lại đăng nhập</span>
+            <span>{backLabel}</span>
           </button>
         </form>
       </div>

@@ -51,6 +51,7 @@ public enum ErrorCode {
     DOCUMENT_VIRUS_DETECTED(1041, "The uploaded document contains malware", HttpStatus.BAD_REQUEST),
     DOCUMENT_SCAN_FAILED(1042, "The document could not be scanned", HttpStatus.SERVICE_UNAVAILABLE),
     DOCUMENT_NOT_CLEAN(1043, "Only clean documents can be approved", HttpStatus.FORBIDDEN),
+    OTP_NOT_VERIFIED(1044, "OTP must be verified before resetting the password", HttpStatus.BAD_REQUEST),
 
     @Deprecated
     INVALID_OTP(1010, "Invalid verification code", HttpStatus.BAD_REQUEST),

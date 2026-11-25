@@ -40,4 +40,23 @@ public class EmailService {
             throw new AppException(ErrorCode.EMAIL_DELIVERY_FAILED);
         }
     }
+
+    public void sendPasswordResetOtp(String toEmail, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("EduShare - Đặt lại mật khẩu");
+        message.setText(
+                "Mã đặt lại mật khẩu EduShare của bạn là: "
+                        + otp
+                        + "\n\nMã có hiệu lực trong " + otpProperties.getExpirationMinutes() + " phút."
+                        + "\nNếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này."
+        );
+
+        try {
+            mailSender.send(message);
+        } catch (MailException | IllegalArgumentException exception) {
+            throw new AppException(ErrorCode.EMAIL_DELIVERY_FAILED);
+        }
+    }
 }

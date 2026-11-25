@@ -5,6 +5,7 @@ import lombok.experimental.FieldDefaults;
 import org.example.edushare.common.exception.AppException;
 import org.example.edushare.common.exception.ErrorCode;
 import org.example.edushare.feature.auth.config.OtpProperties;
+import org.example.edushare.feature.auth.dto.request.ResetPasswordRequest;
 import org.example.edushare.feature.auth.dto.request.VerifyEmailRequest;
 import org.example.edushare.feature.auth.entity.EmailVerification;
 import org.example.edushare.feature.auth.entity.VerificationStatus;
@@ -15,6 +16,7 @@ import org.example.edushare.feature.user.entity.User;
 import org.example.edushare.feature.user.entity.UserStatus;
 import org.example.edushare.feature.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
@@ -28,12 +30,14 @@ import java.util.Objects;
 public class EmailVerificationService {
     static final SecureRandom RANDOM = new SecureRandom();
     static final VerificationType REGISTRATION = VerificationType.REGISTER;
+    static final VerificationType PASSWORD_RESET = VerificationType.FORGOT_PASSWORD;
 
     EmailVerificationRepository emailVerificationRepository;
     UserRepository userRepository;
     EmailService emailService;
     OtpHasher otpHasher;
     OtpProperties otpProperties;
+    PasswordEncoder passwordEncoder;
 
     @Transactional
     public void createAndSendOtp(User user) {
@@ -137,6 +141,117 @@ public class EmailVerificationService {
         verification.setLastSentAt(now);
         verification.setVerifiedAt(null);
         verification.setStatus(VerificationStatus.PENDING);
+    }
+
+    @Transactional
+    public void requestPasswordReset(String rawEmail) {
+        String email = normalizeEmail(rawEmail);
+        User user = userRepository.findByEmailForUpdate(email).orElse(null);
+
+        // Do not reveal whether an email is registered or whether it is active.
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
+            return;
+        }
+
+        EmailVerification current = emailVerificationRepository
+                .findFirstByUser_IdAndTypeOrderByCreatedAtDesc(user.getId(), PASSWORD_RESET)
+                .orElse(null);
+        LocalDateTime now = LocalDateTime.now();
+        if (current != null && current.getStatus() == VerificationStatus.PENDING) {
+            if (current.getResendCount() >= otpProperties.getMaxResends()) {
+                return;
+            }
+            if (current.getLastSentAt() != null
+                    && current.getLastSentAt().plusSeconds(otpProperties.getResendCooldownSeconds()).isAfter(now)) {
+                return;
+            }
+        }
+
+        String otp = generateOtp();
+        int resendCount = current != null && current.getStatus() == VerificationStatus.PENDING
+                ? current.getResendCount() + 1
+                : 0;
+        EmailVerification verification = EmailVerification.builder()
+                .user(user)
+                .otpHash(otpHasher.hash(otp))
+                .type(PASSWORD_RESET)
+                .expiresAt(now.plusMinutes(otpProperties.getExpirationMinutes()))
+                .attempts(0)
+                .resendCount(resendCount)
+                .status(VerificationStatus.PENDING)
+                .build();
+
+        emailService.sendPasswordResetOtp(user.getEmail(), otp);
+        if (current != null && current.getStatus() == VerificationStatus.PENDING) {
+            current.setStatus(VerificationStatus.EXPIRED);
+        }
+        verification.setLastSentAt(now);
+        emailVerificationRepository.save(verification);
+    }
+
+    @Transactional(noRollbackFor = AppException.class)
+    public void verifyPasswordResetOtp(VerifyEmailRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        User user = userRepository.findByEmailForUpdate(email)
+                .orElseThrow(() -> new AppException(ErrorCode.OTP_INVALID));
+        EmailVerification verification = emailVerificationRepository
+                .findFirstByUser_IdAndTypeOrderByCreatedAtDesc(user.getId(), PASSWORD_RESET)
+                .orElseThrow(() -> new AppException(ErrorCode.OTP_INVALID));
+
+        ensurePending(verification);
+        LocalDateTime now = LocalDateTime.now();
+        if (!verification.getExpiresAt().isAfter(now)) {
+            verification.setStatus(VerificationStatus.EXPIRED);
+            throw new AppException(ErrorCode.OTP_EXPIRED);
+        }
+        if (verification.getAttempts() >= otpProperties.getMaxAttempts()) {
+            verification.setStatus(VerificationStatus.BLOCKED);
+            throw new AppException(ErrorCode.OTP_BLOCKED);
+        }
+        if (!isWellFormed(request.getOtp())
+                || !otpHasher.matches(request.getOtp(), verification.getOtpHash())) {
+            int attempts = verification.getAttempts() + 1;
+            verification.setAttempts(attempts);
+            if (attempts >= otpProperties.getMaxAttempts()) {
+                verification.setStatus(VerificationStatus.BLOCKED);
+                throw new AppException(ErrorCode.OTP_BLOCKED);
+            }
+            throw new AppException(ErrorCode.OTP_INVALID);
+        }
+
+        verification.setStatus(VerificationStatus.VERIFIED);
+        verification.setVerifiedAt(now);
+    }
+
+    @Transactional(noRollbackFor = AppException.class)
+    public void resetPassword(ResetPasswordRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        User user = userRepository.findByEmailForUpdate(email)
+                .orElseThrow(() -> new AppException(ErrorCode.OTP_NOT_VERIFIED));
+        EmailVerification verification = emailVerificationRepository
+                .findFirstByUser_IdAndTypeOrderByCreatedAtDesc(user.getId(), PASSWORD_RESET)
+                .orElseThrow(() -> new AppException(ErrorCode.OTP_NOT_VERIFIED));
+
+        if (verification.getStatus() != VerificationStatus.VERIFIED) {
+            if (verification.getStatus() == VerificationStatus.EXPIRED) {
+                throw new AppException(ErrorCode.OTP_EXPIRED);
+            }
+            if (verification.getStatus() == VerificationStatus.BLOCKED) {
+                throw new AppException(ErrorCode.OTP_BLOCKED);
+            }
+            throw new AppException(ErrorCode.OTP_NOT_VERIFIED);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (verification.getVerifiedAt() == null
+                || !verification.getVerifiedAt().plusMinutes(otpProperties.getExpirationMinutes()).isAfter(now)) {
+            verification.setStatus(VerificationStatus.EXPIRED);
+            throw new AppException(ErrorCode.OTP_EXPIRED);
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // A verified OTP is consumed after the password has been changed.
+        verification.setStatus(VerificationStatus.EXPIRED);
     }
 
     String generateOtp() {
