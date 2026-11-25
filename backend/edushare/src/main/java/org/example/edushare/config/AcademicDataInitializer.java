@@ -106,6 +106,10 @@ public class AcademicDataInitializer implements ApplicationRunner {
     }
 
     private void linkSubject(Major major, Subject subject) {
+        if (subject.getFaculty() == null) {
+            subject.setFaculty(major.getFaculty());
+            subjectRepository.save(subject);
+        }
         boolean linked = major.getSubjects().stream()
                 .anyMatch(existingSubject -> existingSubject.getId().equals(subject.getId()));
         if (!linked) {

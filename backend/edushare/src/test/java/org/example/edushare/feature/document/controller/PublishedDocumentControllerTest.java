@@ -1,6 +1,9 @@
 package org.example.edushare.feature.document.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import jakarta.persistence.EntityManager;
 import org.example.edushare.feature.academic.entity.Subject;
 import org.example.edushare.feature.academic.repository.SubjectRepository;
@@ -11,6 +14,7 @@ import org.example.edushare.feature.document.entity.FileType;
 import org.example.edushare.feature.document.entity.ScanStatus;
 import org.example.edushare.feature.document.repository.DocumentRepository;
 import org.example.edushare.feature.user.entity.User;
+import org.example.edushare.feature.user.entity.Profile;
 import org.example.edushare.feature.user.repository.UserRepository;
 import org.example.edushare.infrastructure.storage.R2StorageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +29,15 @@ import org.springframework.web.context.WebApplicationContext;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import java.time.LocalDateTime;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import javax.imageio.ImageIO;
+import java.util.ArrayList;
+import java.util.UUID;
+
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -59,12 +71,12 @@ class PublishedDocumentControllerTest {
     }
 
     @Test
-    void guestCanReadOnlyApprovedCleanDocumentsAndTheirFiles() throws Exception {
+    void guestCanReadPublishedDetailsAndAnImageExcerptButCannotReadFullFilesOrDownload() throws Exception {
         Document visible = createDocument(DocumentStatus.APPROVED, ScanStatus.CLEAN);
         Document pending = createDocument(DocumentStatus.PENDING, ScanStatus.CLEAN);
         Document unscanned = createDocument(DocumentStatus.APPROVED, ScanStatus.PENDING);
         String visiblePath = LIBRARY + "/documents/" + visible.getId();
-        byte[] file = {1, 2, 3};
+        byte[] file = previewPdf();
         when(storage.getObjectBytes(visible.getFileUrl()))
                 .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), file));
 
@@ -77,21 +89,114 @@ class PublishedDocumentControllerTest {
         mvc.perform(get(visiblePath))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.previewAvailable").value(true))
-                .andExpect(jsonPath("$.result.document.views").value(1));
-        mvc.perform(get(visiblePath + "/preview"))
+                .andExpect(jsonPath("$.result.document.views").value(1))
+                .andExpect(jsonPath("$.result.uploader.name").value("Thành viên EduShare"))
+                .andExpect(jsonPath("$.result.uploader.publishedDocuments").value(1))
+                .andExpect(jsonPath("$.result.relatedDocuments").isEmpty());
+        byte[] sample = mvc.perform(get(visiblePath + "/preview").param("full", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse().getContentAsByteArray();
+        var image = ImageIO.read(new ByteArrayInputStream(sample));
+        assertThat(image.getWidth()).isEqualTo(300);
+        assertThat(image.getHeight()).isEqualTo(270);
+        mvc.perform(get(visiblePath + "/download"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get(LIBRARY + "/me/documents/" + visible.getId() + "/preview"))
+                .andExpect(status().isUnauthorized());
+        assertThat(documents.findById(visible.getId()).orElseThrow().getDownloadCount()).isZero();
+
+        mvc.perform(get(LIBRARY + "/me/documents/" + visible.getId() + "/preview").with(user(READER)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(content().bytes(file));
-        mvc.perform(get(visiblePath + "/download"))
+        mvc.perform(get(visiblePath + "/download").with(user(READER)))
                 .andExpect(status().isOk()).andExpect(content().bytes(file));
         mvc.perform(get(LIBRARY + "/documents/" + pending.getId() + "/preview"))
                 .andExpect(status().isNotFound());
         mvc.perform(get(LIBRARY + "/documents/" + unscanned.getId()))
                 .andExpect(status().isNotFound());
+        mvc.perform(get(LIBRARY + "/me/documents/" + pending.getId() + "/preview").with(user(READER)))
+                .andExpect(status().isNotFound());
+        mvc.perform(get(LIBRARY + "/documents/" + unscanned.getId() + "/download").with(user(READER)))
+                .andExpect(status().isNotFound());
         mvc.perform(get(LIBRARY + "/me/favorites")).andExpect(status().isUnauthorized());
         mvc.perform(post(LIBRARY + "/me/documents/" + visible.getId() + "/comments").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"Guest\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void officeDocumentsUseTheConvertedPdfForGuestExcerptsAndOnlySignedInReadersCanDownloadTheOriginal() throws Exception {
+        Document document = createDocument(DocumentStatus.APPROVED, ScanStatus.CLEAN);
+        document.setFileType(FileType.XLSX);
+        document.setFileName("java.xlsx");
+        document.setPreviewStatus(org.example.edushare.feature.document.entity.PreviewStatus.AVAILABLE);
+        document.setPreviewFileUrl("previews/java.pdf");
+        documents.saveAndFlush(document);
+        byte[] pdf = previewPdf();
+        when(storage.getObjectBytes(document.getPreviewFileUrl()))
+                .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), pdf));
+        byte[] original = {1, 2, 3};
+        when(storage.getObjectBytes(document.getFileUrl()))
+                .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), original));
+        String path = LIBRARY + "/documents/" + document.getId();
+        mvc.perform(get(path + "/preview"))
+                .andExpect(status().isOk()).andExpect(content().contentType(MediaType.IMAGE_PNG));
+        mvc.perform(get(path + "/download"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get(path + "/download").with(user(READER)))
+                .andExpect(status().isOk()).andExpect(content().bytes(original));
+    }
+
+    @Test
+    void invalidGuestPreviewNeverFallsBackToTheFullSource() throws Exception {
+        Document document = createDocument(DocumentStatus.APPROVED, ScanStatus.CLEAN);
+        when(storage.getObjectBytes(document.getFileUrl()))
+                .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), new byte[]{1, 2, 3}));
+        mvc.perform(get(LIBRARY + "/documents/" + document.getId() + "/preview"))
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    void detailIncludesPublicUploaderInformationAndOnlyThreeNewestPublishedDocumentsInTheSameSubject() throws Exception {
+        uploader.attachProfile(Profile.builder().fullName("Nguyễn Văn A").bio("Chia sẻ kiến thức Java.")
+                .phone("0901234567").build());
+        users.saveAndFlush(uploader);
+        Document current = createDocument(DocumentStatus.APPROVED, ScanStatus.CLEAN);
+        var relatedIds = new ArrayList<UUID>();
+        for (int index = 0; index < 4; index++) {
+            Document related = createDocument(DocumentStatus.APPROVED, ScanStatus.CLEAN);
+            relatedIds.add(related.getId());
+            entityManager.createQuery("update Document d set d.createdAt = :createdAt where d.id = :id")
+                    .setParameter("createdAt", LocalDateTime.of(2026, 11, 1, 10, 0).plusDays(index))
+                    .setParameter("id", related.getId()).executeUpdate();
+        }
+        createDocument(DocumentStatus.PENDING, ScanStatus.CLEAN);
+        createDocument(DocumentStatus.REJECTED, ScanStatus.CLEAN);
+        createDocument(DocumentStatus.APPROVED, ScanStatus.PENDING);
+        createDocument(DocumentStatus.APPROVED, ScanStatus.INFECTED);
+        Subject otherSubject = subjects.save(Subject.builder().code("DB101").name("Cơ sở dữ liệu").credits(3).build());
+        Document unrelated = createDocument(DocumentStatus.APPROVED, ScanStatus.CLEAN);
+        unrelated.setSubject(otherSubject);
+        documents.saveAndFlush(unrelated);
+        entityManager.clear();
+
+        mvc.perform(get(LIBRARY + "/documents/" + current.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.uploader.name").value("Nguyễn Văn A"))
+                .andExpect(jsonPath("$.result.uploader.bio").value("Chia sẻ kiến thức Java."))
+                .andExpect(jsonPath("$.result.uploader.publishedDocuments").value(6))
+                .andExpect(jsonPath("$.result.uploader.joinedAt").isNotEmpty())
+                .andExpect(jsonPath("$.result.uploader.email").doesNotExist())
+                .andExpect(jsonPath("$.result.uploader.phone").doesNotExist())
+                .andExpect(jsonPath("$.result.relatedDocuments.length()").value(3))
+                .andExpect(jsonPath("$.result.relatedDocuments[0].id").value(relatedIds.get(3).toString()))
+                .andExpect(jsonPath("$.result.relatedDocuments[1].id").value(relatedIds.get(2).toString()))
+                .andExpect(jsonPath("$.result.relatedDocuments[2].id").value(relatedIds.get(1).toString()))
+                .andExpect(jsonPath("$.result.relatedDocuments[0].objectKey").doesNotExist());
     }
 
     @Test
@@ -191,6 +296,15 @@ class PublishedDocumentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk()).andReturn().getResponse();
         return JsonPath.read(response.getContentAsString(), "$.result.id");
+    }
+
+    private byte[] previewPdf() throws Exception {
+        try (var document = new PDDocument(); var output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage(new PDRectangle(200, 300)));
+            document.addPage(new PDPage(new PDRectangle(200, 300)));
+            document.save(output);
+            return output.toByteArray();
+        }
     }
 
     private Document createDocument(DocumentStatus status, ScanStatus scanStatus) {

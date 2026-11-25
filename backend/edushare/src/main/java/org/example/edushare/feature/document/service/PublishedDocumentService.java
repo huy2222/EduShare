@@ -28,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.core.exception.SdkException;
 
 import java.time.LocalDateTime;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +48,7 @@ public class PublishedDocumentService {
     private final DocumentInteractionRepository interactions;
     private final UserRepository users;
     private final DocumentPreviewService previewService;
+    private final GuestDocumentPreviewService guestPreviewService;
     private final R2StorageService storageService;
 
     public record Results<T>(List<T> items, long total, boolean hasNext) {
@@ -56,7 +58,10 @@ public class PublishedDocumentService {
     }
 
     public record RatingSummary(double average, long total, long[] counts) {}
-    public record Detail(PublishedDocumentResponse document, boolean previewAvailable, RatingSummary ratings) {}
+    public record Uploader(String name, String bio, String majorName, LocalDateTime joinedAt,
+                           long publishedDocuments) {}
+    public record Detail(PublishedDocumentResponse document, boolean previewAvailable, RatingSummary ratings,
+                         Uploader uploader, List<PublishedDocumentResponse> relatedDocuments) {}
     public record Viewer(boolean favorite, Integer rating) {}
     public record Comment(UUID id, String author, String body, LocalDateTime createdAt,
                           long likeCount, boolean liked, long replyCount) {
@@ -81,8 +86,18 @@ public class PublishedDocumentService {
             throw new AppException(ErrorCode.DOCUMENT_NOT_FOUND);
         }
         Document document = findPublished(id);
+        User uploader = document.getUploader();
+        var profile = uploader.getProfile();
+        var uploaderInfo = new Uploader(PublishedDocumentResponse.displayName(uploader),
+                profile == null ? null : profile.getBio(),
+                profile == null || profile.getMajor() == null ? null : profile.getMajor().getName(),
+                uploader.getCreatedAt(), documents.countByUploaderIdAndStatusAndScanStatus(
+                        uploader.getId(), DocumentStatus.APPROVED, ScanStatus.CLEAN));
+        var related = documents.findTop3BySubjectIdAndIdNotAndStatusAndScanStatusOrderByCreatedAtDescIdDesc(
+                        document.getSubject().getId(), id, DocumentStatus.APPROVED, ScanStatus.CLEAN)
+                .stream().map(PublishedDocumentResponse::from).toList();
         return new Detail(PublishedDocumentResponse.from(document),
-                previewService.resolvePreviewObjectKey(document) != null, ratings(id));
+                previewService.resolvePreviewObjectKey(document) != null, ratings(id), uploaderInfo, related);
     }
 
     public byte[] preview(UUID id) {
@@ -92,6 +107,17 @@ public class PublishedDocumentService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tài liệu chưa có bản xem trước.");
         }
         return readFile(id, key);
+    }
+
+    public byte[] guestPreview(UUID id) {
+        byte[] pdf = preview(id);
+        try {
+            return guestPreviewService.render(pdf);
+        } catch (IOException | IllegalArgumentException exception) {
+            log.warn("Unable to render guest preview for document {}", id, exception);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Chưa thể tạo bản xem trước. Vui lòng thử lại sau.");
+        }
     }
 
     @Transactional

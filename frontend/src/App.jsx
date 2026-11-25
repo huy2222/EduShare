@@ -4,6 +4,9 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import HomePage from './pages/HomePage'
 import AdminLayout from './pages/AdminLayout'
 import DocumentDetailPage from './pages/DocumentDetailPage'
+import ExplorePage from './pages/ExplorePage'
+import SubjectsPage from './pages/SubjectsPage'
+import SubjectDetailPage from './pages/SubjectDetailPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import UploadPage from './pages/UploadPage'
@@ -29,7 +32,8 @@ export default function App() {
   const { state } = useLocation()
   const requestedPath = state?.returnTo
   const returnTo = typeof requestedPath === 'string'
-    && (requestedPath === '/favorites' || /^\/documents\/[\da-f-]{36}$/i.test(requestedPath))
+    && (requestedPath === '/favorites' || /^\/documents\/[\da-f-]{36}$/i.test(requestedPath)
+      || /^\/subjects(?:\/[\da-f-]{36})?(?:\?[^#\r\n]*)?$/i.test(requestedPath))
     ? requestedPath
     : null
 
@@ -116,9 +120,10 @@ export default function App() {
         }
       />
       <Route path="/" element={<HomePage {...sharedProps} />} />
-      <Route path="/explore" element={<HomePage {...sharedProps} />} />
+      <Route path="/explore" element={<ExplorePage {...sharedProps} />} />
       <Route path="/documents/:id" element={<DocumentDetailPage {...sharedProps} />} />
-      <Route path="/subjects" element={<HomePage {...sharedProps} />} />
+      <Route path="/subjects" element={<SubjectsPage {...sharedProps} />} />
+      <Route path="/subjects/:id" element={<SubjectDetailPage {...sharedProps} />} />
       <Route
         path="/login"
         element={loginElement}

@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.example.edushare.common.response.ApiResponse;
 import org.example.edushare.feature.document.dto.response.PublishedDocumentResponse;
 import org.example.edushare.feature.document.service.PublishedDocumentService;
+import org.example.edushare.feature.academic.service.LibraryBrowseService;
+import org.example.edushare.feature.document.entity.DocumentType;
+import org.example.edushare.feature.document.entity.FileType;
 import org.example.edushare.feature.document.service.PublishedDocumentService.*;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
@@ -32,6 +35,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PublishedDocumentController {
     private final PublishedDocumentService service;
+    private final LibraryBrowseService browseService;
 
     public record CommentRequest(@NotBlank(message = "Hãy nhập bình luận.")
                                  @Size(max = 2000, message = "Bình luận tối đa 2.000 ký tự.") String body,
@@ -45,8 +49,12 @@ public class PublishedDocumentController {
 
     @GetMapping("/documents")
     public ApiResponse<Results<PublishedDocumentResponse>> list(
-            @RequestParam(defaultValue = "") String query, @RequestParam(defaultValue = "0") int page) {
-        return response(service.list(query, page));
+            @RequestParam(defaultValue = "") String query, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size, @RequestParam(defaultValue = "newest") String sort,
+            @RequestParam(required = false) String facultyId, @RequestParam(required = false) String majorId,
+            @RequestParam(required = false) String subjectId, @RequestParam(required = false) DocumentType documentType,
+            @RequestParam(required = false) FileType fileType) {
+        return response(browseService.documents(query, facultyId, majorId, subjectId, documentType, fileType, sort, page, size));
     }
 
     @GetMapping("/documents/{id}")
@@ -55,6 +63,12 @@ public class PublishedDocumentController {
     }
 
     @GetMapping("/documents/{id}/preview")
+    public ResponseEntity<byte[]> guestPreview(@PathVariable UUID id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .contentType(MediaType.IMAGE_PNG).body(service.guestPreview(id));
+    }
+
+    @GetMapping("/me/documents/{id}/preview")
     public ResponseEntity<byte[]> preview(@PathVariable UUID id) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .contentType(MediaType.APPLICATION_PDF).body(service.preview(id));

@@ -4,8 +4,10 @@ const publicRead = { credentials: 'omit' }
 const documentPath = (id) => `/library/documents/${encodeURIComponent(id)}`
 const interactionPath = (id) => `/library/me/documents/${encodeURIComponent(id)}`
 
-export function getPublishedDocuments(query, page) {
-  return apiGet(`/library/documents?${new URLSearchParams({ query, page })}`, publicRead)
+export function getPublishedDocuments(query = '', page = 0, filters = {}) {
+  const params = new URLSearchParams({ query, page })
+  Object.entries(filters).forEach(([key, value]) => { if (value !== '' && value != null) params.set(key, value) })
+  return apiGet(`/library/documents?${params}`, publicRead)
 }
 
 export function getPublishedDocument(id) {
@@ -19,12 +21,13 @@ export function getDocumentComments(id, page, { authenticated = false, parentId 
   return apiGet(`${path}/comments?${query}`, authenticated ? undefined : publicRead)
 }
 
-export function getDocumentPreview(id) {
-  return apiGetBlob(`${documentPath(id)}/preview`, publicRead)
+export function getDocumentPreview(id, { authenticated = false } = {}) {
+  const path = authenticated ? interactionPath(id) : documentPath(id)
+  return apiGetBlob(`${path}/preview`, authenticated ? undefined : publicRead)
 }
 
 export async function downloadPublishedDocument(id, fileName) {
-  const blob = await apiGetBlob(`${documentPath(id)}/download`, publicRead)
+  const blob = await apiGetBlob(`${documentPath(id)}/download`)
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

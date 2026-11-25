@@ -54,6 +54,9 @@ it('opens an approved document from the public homepage and prompts guests to si
   expect(screen.getByRole('link', { name: 'Đăng nhập để bình luận' })).toHaveAttribute('href', '/login')
   expect(screen.getByRole('link', { name: 'Đăng nhập để đánh giá' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: '♡ Đăng nhập để lưu' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Đăng nhập để tải về' })).toHaveAttribute('href', '/login')
+  expect(screen.queryByRole('button', { name: /Tải về/ })).not.toBeInTheDocument()
+  expect(library.downloadPublishedDocument).not.toHaveBeenCalled()
   expect(await screen.findByText('Chưa có bình luận.')).toBeInTheDocument()
   expect(library.getDocumentViewer).not.toHaveBeenCalled()
 })
@@ -111,4 +114,59 @@ it('posts a reply in its thread and toggles its like', async () => {
   fireEvent.click(replyLike)
   await waitFor(() => expect(replyLike).toHaveAttribute('aria-pressed', 'false'))
   expect(library.setDocumentCommentLike).toHaveBeenNthCalledWith(2, document.id, reply.id, false)
+})
+
+it('shows the uploader and related documents with links, without a status in document information', async () => {
+  const related = { ...document, id: 'related-java', title: 'Bài tập Java có lời giải' }
+  library.getPublishedDocument.mockResolvedValue({
+    result: {
+      document, ratings: emptyRatings, previewAvailable: false,
+      uploader: {
+        name: document.author, majorName: 'Kỹ thuật phần mềm', bio: 'Cùng chia sẻ kiến thức Java.',
+        publishedDocuments: 12, joinedAt: document.createdAt,
+      },
+      relatedDocuments: [related],
+    },
+  })
+  open(path)
+  const uploader = await screen.findByRole('region', { name: 'Thông tin người đăng' })
+  expect(within(uploader).getByText(document.author)).toBeInTheDocument()
+  expect(within(uploader).getByText('Kỹ thuật phần mềm')).toBeInTheDocument()
+  expect(within(uploader).getByText('Cùng chia sẻ kiến thức Java.')).toBeInTheDocument()
+  expect(within(uploader).getByText('12')).toBeInTheDocument()
+  expect(within(screen.getByRole('region', { name: 'Thông tin tài liệu' })).queryByText('Trạng thái')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Bài tập Java có lời giải/ })).toHaveAttribute('href', '/documents/related-java')
+})
+
+it('shows action feedback in a dismissible popup and keeps the favorite unchanged on failure', async () => {
+  library.setDocumentFavorite.mockRejectedValue(new Error('Không thể lưu yêu thích.'))
+  open(path, true)
+  const favorite = await screen.findByRole('button', { name: '♡ Thêm vào yêu thích' })
+  await waitFor(() => expect(favorite).toBeEnabled())
+  fireEvent.click(favorite)
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('Không thể lưu yêu thích.')
+  expect(alert.parentElement).toBe(window.document.body)
+  expect(favorite).toHaveAttribute('aria-pressed', 'false')
+  fireEvent.click(within(alert).getByRole('button', { name: 'Đóng thông báo' }))
+  expect(screen.queryByText('Không thể lưu yêu thích.')).not.toBeInTheDocument()
+})
+
+it('keeps a failed comment draft and reports the error in a popup', async () => {
+  library.postDocumentComment.mockRejectedValue(new Error('Không thể gửi bình luận.'))
+  open(path, true)
+  const input = await screen.findByLabelText('Bình luận của bạn')
+  fireEvent.change(input, { target: { value: 'Giữ lại nội dung này' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Gửi bình luận' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Không thể gửi bình luận.')
+  expect(input).toHaveValue('Giữ lại nội dung này')
+})
+
+it('lets a signed-in reader download the original file', async () => {
+  library.downloadPublishedDocument.mockResolvedValue(undefined)
+  open(path, true)
+  fireEvent.click(await screen.findByRole('button', { name: /Tải về/ }))
+  expect(await screen.findByText('Đã tải tài liệu thành công.')).toBeInTheDocument()
+  expect(library.downloadPublishedDocument).toHaveBeenCalledWith(document.id, document.fileName)
+  expect(screen.getByText('1 lượt tải')).toBeInTheDocument()
 })

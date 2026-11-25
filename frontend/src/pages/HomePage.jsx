@@ -1,40 +1,17 @@
 import { canEnterAdmin } from '../services/adminAccess'
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PublishedDocumentList } from '../components/DocumentCards'
+import SubjectCard from '../components/SubjectCard'
+import Toast, { useToast } from '../components/Toast'
+import { BrowseStatus, FollowError } from '../components/BrowseControls'
+import useLibraryData from '../hooks/useLibraryData'
+import useSubjectFollows from '../hooks/useSubjectFollows'
+import { getSubjects } from '../services/subjectApi'
+import { getAcademicCatalog } from '../services/academicApi'
 import brandMark from '../assets/brand-mark.svg'
 import '../styles/home.css'
 import NotificationBell from '../components/NotificationBell'
-
-const courses = [
-  {
-    id: 1,
-    code: 'INT1301',
-    title: 'Cấu trúc dữ liệu & Giải thuật',
-    description:
-      'Nghiên cứu các cấu trúc dữ liệu nâng cao, thuật toán sắp xếp, tìm kiếm và phân tích độ phức tạp.',
-    faculty: 'Khoa Công nghệ Thông tin',
-    documents: 142,
-  },
-  {
-    id: 2,
-    code: 'INT1301',
-    title: 'Cấu trúc dữ liệu & Giải thuật',
-    description:
-      'Nghiên cứu các cấu trúc dữ liệu nâng cao, thuật toán sắp xếp, tìm kiếm và phân tích độ phức tạp.',
-    faculty: 'Khoa Công nghệ Thông tin',
-    documents: 142,
-  },
-  {
-    id: 3,
-    code: 'INT1301',
-    title: 'Cấu trúc dữ liệu & Giải thuật',
-    description:
-      'Nghiên cứu các cấu trúc dữ liệu nâng cao, thuật toán sắp xếp, tìm kiếm và phân tích độ phức tạp.',
-    faculty: 'Khoa Công nghệ Thông tin',
-    documents: 142,
-  },
-]
 
 function Icon({ name, size = 18, className = '' }) {
   const paths = {
@@ -135,10 +112,10 @@ export function HomeHeader({
           >
             Trang chủ
           </Link>
-          <Link className="home-nav__link" to="/explore">
+          <Link className={`home-nav__link${activePage === 'explore' ? ' home-nav__link--active' : ''}`} aria-current={activePage === 'explore' ? 'page' : undefined} to="/explore">
             Khám phá tài liệu
           </Link>
-          <Link className="home-nav__link" to="/subjects">
+          <Link className={`home-nav__link${activePage === 'subjects' ? ' home-nav__link--active' : ''}`} aria-current={activePage === 'subjects' ? 'page' : undefined} to="/subjects">
             Môn học
           </Link>
           <Link
@@ -214,43 +191,10 @@ export function HomeHeader({
 
 function SectionLink({ children }) {
   return (
-    <Link className="home-section__link" to="/explore">
+    <Link className="home-section__link" to="/subjects">
       {children}
       <Icon name="arrow" size={19} />
     </Link>
-  )
-}
-
-function CourseCard({ course }) {
-  const [followed, setFollowed] = useState(false)
-
-  return (
-    <article className="course-card">
-      <div className="course-card__topline">
-        <span className="course-card__code">{course.code}</span>
-        <button
-          aria-pressed={followed}
-          className={`course-card__follow${followed ? ' course-card__follow--active' : ''}`}
-          onClick={() => setFollowed((current) => !current)}
-          type="button"
-        >
-          {!followed && <Icon name="plus" size={17} />}
-          {followed ? 'Đang theo dõi' : 'Theo dõi'}
-        </button>
-      </div>
-      <h3>{course.title}</h3>
-      <p className="course-card__description">{course.description}</p>
-      <div className="course-card__meta">
-        <span>
-          <Icon name="building" size={17} />
-          {course.faculty}
-        </span>
-        <strong>{course.documents} tài liệu</strong>
-      </div>
-      <button className="course-card__detail" type="button">
-        Xem chi tiết môn học
-      </button>
-    </article>
   )
 }
 
@@ -259,30 +203,25 @@ export default function HomePage({
   currentUser,
   onLogout = () => {},
 }) {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const searchTerm = searchParams.get('query') || ''
   const [searchInput, setSearchInput] = useState(searchTerm)
   useEffect(() => setSearchInput(searchTerm), [searchTerm])
-  const [subject, setSubject] = useState('all')
-
-  const filteredCourses = useMemo(() => {
-    const query = searchTerm.trim().toLocaleLowerCase('vi')
-    if (!query) return courses
-
-    return courses.filter((course) =>
-      [course.code, course.title, course.description, course.faculty].some(
-        (value) => value.toLocaleLowerCase('vi').includes(query),
-      ),
-    )
-  }, [searchTerm])
+  const [subject, setSubject] = useState('')
+  const popular = useLibraryData('popular-subjects', () => getSubjects({ size: 3 }))
+  const catalog = useLibraryData('catalog', getAcademicCatalog)
+  const subjects = [...new Map((catalog.data || []).flatMap((faculty) => faculty.majors.flatMap((major) => major.subjects)).map((item) => [item.id, item])).values()]
+  const { toast, notify, dismiss } = useToast()
+  const follows = useSubjectFollows({ authenticated, currentUser, notify })
 
   const handleSubmit = (event) => {
     event.preventDefault()
     const query = searchInput.trim()
-    setSearchParams(query ? { query } : {})
-    document
-      .querySelector('#documents-title')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const filters = new URLSearchParams()
+    if (query) filters.set('query', query)
+    if (subject) filters.set('subjectId', subject)
+    navigate(`/explore${filters.size ? `?${filters}` : ''}`)
   }
 
   return (
@@ -324,11 +263,8 @@ export default function HomePage({
                   value={subject}
                   onChange={(event) => setSubject(event.target.value)}
                 >
-                  <option value="all">Tất cả môn học</option>
-                  <option value="information-technology">
-                    Công nghệ thông tin
-                  </option>
-                  <option value="economics">Kinh tế</option>
+                  <option value="">Tất cả môn học</option>
+                  {subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </label>
               <button type="submit">Tìm kiếm</button>
@@ -345,20 +281,18 @@ export default function HomePage({
             <div className="home-section__header">
               <div>
                 <h2 id="popular-title">Môn học phổ biến</h2>
-                <p>Danh mục học phần được truy cập nhiều nhất học kỳ này</p>
+                <p>Những môn học có nhiều tài liệu chia sẻ từ cộng đồng</p>
               </div>
               <SectionLink>Xem tất cả</SectionLink>
             </div>
 
-            {filteredCourses.length > 0 ? (
+            <FollowError follows={follows} />
+            <BrowseStatus resource={popular} loading="Đang tải môn học…" empty="Chưa có môn học trong danh mục." />
+            {popular.data && (
               <div className="home-grid home-grid--courses">
-                {filteredCourses.map((course) => (
-                  <CourseCard course={course} key={course.id} />
+                {popular.data.items.map((subject) => (
+                  <SubjectCard subject={subject} follows={follows} key={subject.id} />
                 ))}
-              </div>
-            ) : (
-              <div className="home-empty">
-                Không tìm thấy môn học phù hợp với “{searchTerm}”.
               </div>
             )}
           </section>
@@ -368,12 +302,13 @@ export default function HomePage({
             aria-labelledby="documents-title"
           >
             <div className="home-section__header home-section__header--documents">
-              <h2 id="documents-title">Tài liệu đã duyệt</h2>
+              <h2 id="documents-title">Tài liệu phổ biến &amp; mới tải lên</h2>
             </div>
             <PublishedDocumentList key={searchTerm} query={searchTerm} />
           </section>
         </section>
       </main>
+      <Toast toast={toast} onDismiss={dismiss} />
     </div>
   )
 }

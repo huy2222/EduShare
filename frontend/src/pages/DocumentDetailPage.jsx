@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DocumentComments from '../components/DocumentComments'
 import DocumentPreview from '../components/DocumentPreview'
+import DocumentSidebar from '../components/DocumentSidebar'
+import Toast, { useToast } from '../components/Toast'
 import { formatDocumentDate, formatDocumentNumber, formatDocumentSize } from '../services/documentDisplay'
 import {
   downloadPublishedDocument,
@@ -64,7 +66,7 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
   const [viewerRetry, setViewerRetry] = useState(0)
   const [selectedRating, setSelectedRating] = useState(null)
   const [pending, setPending] = useState('')
-  const [feedback, setFeedback] = useState(null)
+  const { toast, notify, dismiss } = useToast()
 
   useEffect(() => {
     let active = true
@@ -98,12 +100,11 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
   async function run(action, operation, message) {
     if (pending) return
     setPending(action)
-    setFeedback(null)
     try {
       await operation()
-      if (message) setFeedback({ message })
+      if (message) notify(message)
     } catch (err) {
-      setFeedback({ message: err.message, error: true })
+      notify(err.message, true)
     } finally {
       setPending('')
     }
@@ -123,6 +124,7 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
   return (
     <div className="home-page document-reader">
       <HomeHeader
+        activePage="explore"
         authenticated={authenticated}
         currentUser={currentUser}
         onLogout={onLogout}
@@ -151,7 +153,7 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
             <section className="reader-panel reader-hero">
               <div>
                 <div className="reader-tags">
-                  <Link to={`/explore?${new URLSearchParams({ query: document.subjectCode })}`}>{document.subjectName} ({document.subjectCode})</Link>
+                  <Link to={document.subjectId ? `/subjects/${document.subjectId}` : `/explore?${new URLSearchParams({ query: document.subjectCode })}`}>{document.subjectName} ({document.subjectCode})</Link>
                   <span>{document.fileType}</span><span className="reader-approved">✓ Đã duyệt</span>
                 </div>
                 <h1>{document.title}</h1>
@@ -168,16 +170,16 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
                 </div>
               </div>
               <div className="reader-actions">
-                <button type="button" className="reader-button reader-button--primary" disabled={Boolean(pending)}
+                {authenticated ? <button type="button" className="reader-button reader-button--primary" disabled={Boolean(pending)}
                   onClick={() => run('download', async () => {
                     await downloadPublishedDocument(id, document.fileName)
                     setDetail((previous) => ({
                       ...previous,
                       document: { ...previous.document, downloads: previous.document.downloads + 1 },
                     }))
-                  })}>
+                  }, 'Đã tải tài liệu thành công.')}>
                   {pending === 'download' ? 'Đang tải…' : `↓ Tải về (${formatDocumentSize(document.fileSize)})`}
-                </button>
+                </button> : loginLink('Đăng nhập để tải về', 'reader-button reader-button--primary')}
                 {authenticated ? (
                   <button type="button" className="reader-button" disabled={!viewer || Boolean(pending)} aria-pressed={viewer?.favorite ?? false}
                     onClick={() => run('favorite', async () => {
@@ -189,34 +191,22 @@ function DocumentDetail({ id, authenticated, currentUser, onLogout }) {
                   </button>
                 ) : loginLink('♡ Đăng nhập để lưu', 'reader-button')}
                 {viewerError && <small role="alert">{viewerError} <button type="button" onClick={() => setViewerRetry((value) => value + 1)}>Thử lại</button></small>}
-                {feedback && <small role={feedback.error ? 'alert' : 'status'}>{feedback.message}</small>}
               </div>
             </section>
             <div className="reader-columns">
               <div className="reader-content">
-                <DocumentPreview documentId={id} available={detail.previewAvailable} />
+                <DocumentPreview documentId={id} available={detail.previewAvailable} authenticated={authenticated} />
                 <Ratings summary={detail.ratings} authenticated={authenticated} value={selectedRating}
                   onChange={setSelectedRating} onSubmit={submitRating} busy={!viewer || Boolean(pending)} loginLink={loginLink} />
                 <DocumentComments key={currentUser?.id ?? (authenticated ? 'signed-in' : 'guest')}
-                  documentId={id} authenticated={authenticated} loginLink={loginLink} />
+                  documentId={id} authenticated={authenticated} loginLink={loginLink} notify={notify} />
               </div>
-              <aside className="reader-sidebar">
-                <section className="reader-panel">
-                  <h2>Thông tin tài liệu</h2>
-                  <dl>
-                    <dt>Môn học</dt><dd>{document.subjectName}</dd>
-                    <dt>Mã môn học</dt><dd>{document.subjectCode}</dd>
-                    {document.facultyName && <><dt>Khoa quản lý</dt><dd>{document.facultyName}</dd></>}
-                    <dt>Định dạng</dt><dd>{document.fileType}</dd>
-                    <dt>Trạng thái</dt><dd className="reader-approved">Đã duyệt</dd>
-                  </dl>
-                  {document.description && <p className="reader-description">{document.description}</p>}
-                </section>
-              </aside>
+              <DocumentSidebar document={document} uploader={detail.uploader} relatedDocuments={detail.relatedDocuments} />
             </div>
           </>
         )}
       </main>
+      <Toast toast={toast} onDismiss={dismiss} />
     </div>
   )
 }
