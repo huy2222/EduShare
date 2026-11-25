@@ -89,7 +89,15 @@
 .reader-button:disabled, .library-pagination button:disabled { opacity: .57; cursor: default; }
 .reader-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 16px; margin-top: 16px; }
 .reader-content, .reader-sidebar { display: grid; align-content: start; gap: 16px; min-width: 0; }
-.reader-preview header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.reader-preview header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.reader-preview__badge { margin-bottom: 16px; padding: 4px 9px; border-radius: 20px; background: #eaf0ff; color: #1958ce; font-size: .8rem; }
+.reader-preview__sample { position: relative; overflow: hidden; border: 1px solid #e1e7ef; border-radius: 9px 9px 0 0; background: #fff; }
+.reader-preview__sample img { display: block; width: 100%; height: auto; }
+.reader-preview__sample::after { content: ''; position: absolute; inset: auto 0 0; height: 64px; background: linear-gradient(transparent, #fff); pointer-events: none; }
+.reader-preview__gate { padding: 24px 16px; border: 1px solid #e1e7ef; border-top: 0; border-radius: 0 0 9px 9px; background: #f7f9fd; text-align: center; }
+.reader-preview__lock { color: #205bd8; }
+.reader-preview__gate h3 { margin: 10px 0 8px; font-size: 1.05rem; }
+.reader-preview__gate p { max-width: 420px; margin: 0 auto 16px; color: #536174; line-height: 1.6; font-size: .9rem; }
 .reader-preview iframe, .reader-preview__placeholder {
   display: block;
   width: 100%;
@@ -103,6 +111,30 @@
 .reader-sidebar dt { color: #536174; }
 .reader-sidebar dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .reader-description { border-top: 1px solid #edf0f4; padding-top: 14px; margin-bottom: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.reader-uploader { text-align: center; }
+.reader-uploader h2 { text-align: left; }
+.reader-uploader__avatar { width: 64px; height: 64px; background: #205bd8; color: #fff; font-size: 1.25rem; }
+.reader-uploader h3 { margin: 12px 0 4px; font-size: 1rem; overflow-wrap: anywhere; }
+.reader-uploader__major { margin: 0; color: #536174; font-size: .86rem; }
+.reader-uploader__bio { margin: 12px 0 0; font-size: .88rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reader-uploader__stats { display: flex; margin-top: 18px; padding: 12px 0; border-radius: 9px; background: #f3f5f8; }
+.reader-uploader__stats > div { flex: 1; min-width: 0; padding: 0 8px; }
+.reader-uploader__stats > div + div { border-left: 1px solid #dfe5ee; }
+.reader-uploader__stats strong, .reader-uploader__stats span { display: block; }
+.reader-uploader__stats strong { font-size: .95rem; }
+.reader-uploader__stats span { margin-top: 4px; font-size: .8rem; color: #536174; }
+.reader-related { list-style: none; margin: 0; padding: 0; }
+.reader-related li + li { margin-top: 8px; }
+.reader-panel .reader-related__link { display: flex; align-items: flex-start; gap: 12px; padding: 10px 6px; border-radius: 8px; color: inherit; text-decoration: none; }
+.reader-related__link:hover { background: #f3f6fb; }
+.reader-related__link:focus-visible { outline: 2px solid #205bd8; outline-offset: 2px; }
+.reader-related__icon { display: grid; place-items: center; flex: 0 0 42px; height: 50px; border-radius: 8px; background: #eaf0ff; color: #205bd8; }
+.reader-related__body { display: grid; gap: 5px; min-width: 0; font-size: .8rem; color: #536174; }
+.reader-related__body > strong { color: #182232; font-size: .88rem; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.reader-related__metrics { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.reader-related__metrics b { color: #ae6200; }
+.reader-related__empty { color: #536174; font-size: .88rem; line-height: 1.6; }
+.reader-related__more { display: flex; margin-top: 16px; }
 .reader-rating-summary { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr; gap: 16px; }
 .reader-rating-score { display: grid; place-content: center; gap: 4px; text-align: center; background: #f0f3f7; border-radius: 8px; padding: 10px; }
 .reader-rating-score strong { font-size: 1.6rem; }
@@ -154,7 +186,6 @@
 
 @media (max-width: 780px) {
   .reader-columns { grid-template-columns: 1fr; }
-  .reader-sidebar { grid-row: 1; }
 }
 @media (max-width: 540px) {
   .reader-hero { grid-template-columns: 1fr; }

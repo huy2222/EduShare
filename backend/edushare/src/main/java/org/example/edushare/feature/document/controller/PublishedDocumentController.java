@@ -55,6 +55,12 @@ public class PublishedDocumentController {
     }
 
     @GetMapping("/documents/{id}/preview")
+    public ResponseEntity<byte[]> guestPreview(@PathVariable UUID id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .contentType(MediaType.IMAGE_PNG).body(service.guestPreview(id));
+    }
+
+    @GetMapping("/me/documents/{id}/preview")
     public ResponseEntity<byte[]> preview(@PathVariable UUID id) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .contentType(MediaType.APPLICATION_PDF).body(service.preview(id));

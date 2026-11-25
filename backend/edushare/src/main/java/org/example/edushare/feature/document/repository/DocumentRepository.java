@@ -80,6 +80,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                                    @Param("scanStatus") ScanStatus scanStatus,
                                    @Param("search") String search, Pageable pageable);
 
+    long countByUploaderIdAndStatusAndScanStatus(String uploaderId, DocumentStatus status, ScanStatus scanStatus);
+
+    @EntityGraph(attributePaths = {"uploader", "uploader.profile", "subject", "subject.faculty"})
+    List<Document> findTop3BySubjectIdAndIdNotAndStatusAndScanStatusOrderByCreatedAtDescIdDesc(
+            String subjectId, UUID id, DocumentStatus status, ScanStatus scanStatus);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select d from Document d where d.id = :id")
     Optional<Document> findForInteraction(@Param("id") UUID id);

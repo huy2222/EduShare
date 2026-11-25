@@ -368,7 +368,7 @@ export default function HomePage({
             aria-labelledby="documents-title"
           >
             <div className="home-section__header home-section__header--documents">
-              <h2 id="documents-title">Tài liệu đã duyệt</h2>
+              <h2 id="documents-title">Tài liệu phổ biến &amp; mới tải lên</h2>
             </div>
             <PublishedDocumentList key={searchTerm} query={searchTerm} />
           </section>
